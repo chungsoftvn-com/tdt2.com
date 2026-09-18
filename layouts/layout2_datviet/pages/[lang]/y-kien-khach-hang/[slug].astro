@@ -1,0 +1,15 @@
+---
+// /vi/y-kien-khach-hang/:slug and /en/y-kien-khach-hang/:slug — chi tiết ý kiến khách hàng.
+import { LANGS, getTestimonials } from '@/lib/content.js';
+import TestimonialDetailPage from '@/components/TestimonialDetailPage.astro';
+
+export function getStaticPaths() {
+  // Slug độc lập ngôn ngữ — một bộ path dùng cho cả 2 ngôn ngữ.
+  const slugs = getTestimonials('vi').map((t) => t.slug);
+  return LANGS.flatMap((lang) => slugs.map((slug) => ({ params: { lang, slug } })));
+}
+
+const { lang, slug } = Astro.params;
+---
+
+<TestimonialDetailPage lang={lang} slug={slug} />

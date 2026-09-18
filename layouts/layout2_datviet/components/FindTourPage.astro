@@ -1,0 +1,125 @@
+---
+// /vi/tim-tour — Tìm tour theo Loại tour, Khu vực, Điểm khởi hành, Điểm đến, Từ khóa.
+import { getContent, getTours } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+import TourCard from './TourCard.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'tim-tour');
+const tours = getTours(lang);
+
+const regions = [...new Set(tours.map((x) => x.regionName || x.region_name || '').filter(Boolean))];
+const departures = [...new Set(tours.map((x) => x.departure || '').filter(Boolean))];
+---
+
+<BaseLayout lang={lang} title={t.title}>
+  <PageHero kicker={t.title} title={t.title} text={t.text} />
+
+  {t.body_html && (
+    <section class="px-5 pt-12">
+      <div class="rich-doc mx-auto max-w-3xl text-center" set:html={richDoc(t.body_html)} />
+    </section>
+  )}
+
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+      <!-- Bộ lọc -->
+      <form data-find-form class="mb-10 grid gap-3 rounded-2xl bg-paper p-4 shadow-[var(--shadow-lift-1)] sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <select data-find-kind class="min-w-0 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+          <option value="">{t.kind_all}</option>
+          <option value="domestic">{t.kind_domestic}</option>
+          <option value="international">{t.kind_international}</option>
+        </select>
+        <select data-find-region class="min-w-0 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+          <option value="">{t.region_all}</option>
+          {regions.map((x) => <option value={x}>{x}</option>)}
+        </select>
+        <select data-find-dep class="min-w-0 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+          <option value="">{t.departure_all}</option>
+          {departures.map((x) => <option value={x}>{x}</option>)}
+        </select>
+        <input data-find-dest type="text" placeholder={t.dest_placeholder} class="min-w-0 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        <input data-find-q type="search" placeholder={t.search_placeholder} class="min-w-0 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+      </form>
+
+      <p data-find-count class="mb-4 text-sm text-ink-soft">
+        <span class="font-semibold text-ink">{tours.length}</span> {t.result_count}
+      </p>
+
+      <div data-find-grid class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {tours.map((x) => (
+          <div
+            data-tour
+            data-name={(x.name || '').toLowerCase()}
+            data-desc={(x.desc || '').toLowerCase()}
+            data-kind={x.region || ''}
+            data-region={x.regionName || x.region_name || ''}
+            data-dep={x.departure || ''}
+          >
+            <TourCard lang={lang} tour={x} />
+          </div>
+        ))}
+      </div>
+
+      <p data-find-empty class="mt-8 hidden text-center text-ink-soft">{t.no_result}</p>
+    </div>
+  </section>
+
+  <script>
+    const q = document.querySelector('[data-find-q]');
+    const dest = document.querySelector('[data-find-dest]');
+    const kindSel = document.querySelector('[data-find-kind]');
+    const regionSel = document.querySelector('[data-find-region]');
+    const depSel = document.querySelector('[data-find-dep]');
+    const cards = Array.from(document.querySelectorAll('[data-tour]'));
+    const count = document.querySelector('[data-find-count] span');
+    const empty = document.querySelector('[data-find-empty]');
+
+    function apply() {
+      const qv = (q.value || '').trim().toLowerCase();
+      const dv = (dest.value || '').trim().toLowerCase();
+      const kv = kindSel.value;
+      const rv = regionSel.value;
+      const dp = depSel.value;
+      let shown = 0;
+      cards.forEach((card) => {
+        const name = card.dataset.name;
+        const desc = card.dataset.desc;
+        const ok =
+          (!kv || card.dataset.kind === kv) &&
+          (!rv || card.dataset.region === rv) &&
+          (!dp || card.dataset.dep === dp) &&
+          (!qv || name.includes(qv) || desc.includes(qv)) &&
+          (!dv || name.includes(dv) || desc.includes(dv));
+        card.classList.toggle('hidden', !ok);
+        if (ok) shown += 1;
+      });
+      count.textContent = String(shown);
+      empty.classList.toggle('hidden', shown !== 0);
+    }
+
+    [q, dest, kindSel, regionSel, depSel].forEach((el) => el && el.addEventListener('input', apply));
+    apply();
+  </script>
+</BaseLayout>
+
+<style>
+  .rich-doc {
+    color: var(--color-ink-soft);
+  }
+  .rich-doc p {
+    margin: 0.4rem 0;
+    line-height: 1.8;
+  }
+  .rich-doc a {
+    color: var(--color-sea);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

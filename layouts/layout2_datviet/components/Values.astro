@@ -1,0 +1,42 @@
+---
+import { getContent } from '@/lib/content.js';
+import SectionHeading from './SectionHeading.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'home');
+
+const values = [
+  { icon: 'star', title: t.value_1_title, text: t.value_1_text },
+  { icon: 'users', title: t.value_2_title, text: t.value_2_text },
+  { icon: 'tag', title: t.value_3_title, text: t.value_3_text },
+  { icon: 'heart', title: t.value_4_title, text: t.value_4_text },
+];
+---
+
+<section class="bg-sand-deep px-5 py-16 sm:py-20">
+  <div class="mx-auto max-w-6xl">
+    <SectionHeading kicker={t.values_kicker} title={t.values_title} text={t.values_text} />
+    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        values.map((v, i) => (
+          <div
+            data-reveal
+            style={`--reveal-delay:${i * 0.07}s`}
+            class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]"
+          >
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sea text-sand">
+              <Icon name={v.icon} class="h-6 w-6" />
+            </span>
+            <h3 class="mt-4 font-display text-lg text-ink">{v.title}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-ink-soft">{v.text}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

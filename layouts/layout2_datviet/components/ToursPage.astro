@@ -1,0 +1,100 @@
+---
+import { getContent, getTourRegions, getTours, href } from '@/lib/content.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+import ToursGrid from './ToursGrid.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'tours');
+const c = getContent(lang, 'common');
+const tours = getTours(lang);
+const domestic = tours.filter((x) => x.region === 'domestic');
+const international = tours.filter((x) => x.region === 'international');
+
+// KHU VỰC = các trang thật '/<lang>/tours/khu-vuc/<slug>/' (khác bộ lọc client-side
+// bên dưới chỉ lọc trong trang này). Slug lấy từ region_name bản VI — xem
+// `getTourRegions()` trong lib/content.js.
+const regions = getTourRegions().map((r) => ({
+  ...r,
+  count: tours.filter((x) => r.tourSlugs.includes(x.slug)).length,
+}));
+
+const filters = [
+  { key: 'all', label: c.region_all, list: tours },
+  { key: 'domestic', label: c.region_domestic, list: domestic },
+  { key: 'international', label: c.region_international, list: international },
+];
+---
+
+<BaseLayout lang={lang} title={t.list_title}>
+  <PageHero kicker={t.list_title} title={t.list_title} text={t.list_text} />
+
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+      <!-- Danh sách theo KHU VỰC (link sang trang riêng, có URL để SEO) -->
+      <nav class="mb-8 flex flex-wrap justify-center gap-2" aria-label={t.list_title}>
+        {
+          regions.map((r) => (
+            <a
+              href={href(lang, `tours/khu-vuc/${r.slug}`)}
+              class="inline-flex min-h-10 items-center rounded-full border border-ink/15 bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-sea hover:text-sea"
+            >
+              {r.name}
+              <span class="ml-1.5 rounded-full bg-ink/10 px-2 py-0.5 text-xs tabular-nums">
+                {r.count}
+              </span>
+            </a>
+          ))
+        }
+      </nav>
+
+      <!-- Region filter -->
+      <div data-tour-filters class="mb-10 flex flex-wrap justify-center gap-2" role="tablist" aria-label={t.list_title}>
+        {
+          filters.map((f, i) => (
+            <button
+              type="button"
+              role="tab"
+              data-filter={f.key}
+              aria-selected={i === 0}
+              class={`filter-chip ${i === 0 ? 'is-active' : ''}`}
+            >
+              {f.label}
+              <span class="ml-1.5 rounded-full bg-ink/10 px-2 py-0.5 text-xs tabular-nums">{f.list.length}</span>
+            </button>
+          ))
+        }
+      </div>
+
+      <div data-tour-grids>
+        {
+          filters.map((f) => (
+            <div data-region={f.key} class={f.key === 'all' ? '' : 'hidden'}>
+              <ToursGrid lang={lang} tours={f.list} />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const btns = document.querySelectorAll('[data-tour-filters] [data-filter]');
+    const grids = document.querySelectorAll('[data-tour-grids] [data-region]');
+    btns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.filter;
+        btns.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-selected', String(active));
+        });
+        grids.forEach((g) => g.classList.toggle('hidden', g.dataset.region !== key));
+      });
+    });
+  </script>
+</BaseLayout>

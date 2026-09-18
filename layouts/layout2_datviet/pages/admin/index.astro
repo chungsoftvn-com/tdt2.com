@@ -1,0 +1,398 @@
+---
+// /admin — đăng nhập + bảng điều khiển (đa site, gọi Worker admin API).
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+
+<AdminLayout>
+  <section id="login-view">
+    <h1 class="text-center font-display text-3xl text-ink">Đăng nhập quản trị</h1>
+    <form id="login-form" class="mx-auto mt-6 max-w-sm space-y-4 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <div>
+        <label for="login-email" class="mb-1 block text-sm font-medium text-ink-soft">Email</label>
+        <input id="login-email" type="email" autocomplete="username" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+      </div>
+      <div>
+        <label for="login-pass" class="mb-1 block text-sm font-medium text-ink-soft">Mật khẩu</label>
+        <input id="login-pass" type="password" autocomplete="current-password" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+      </div>
+      <p id="login-error" class="hidden text-sm font-medium text-red-600"></p>
+      <button type="submit" class="w-full rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep">Đăng nhập</button>
+    </form>
+  </section>
+
+  <section id="dash-view" class="hidden">
+    <h1 class="text-center font-display text-3xl text-ink">Bảng điều khiển</h1>
+    <p id="dash-email" class="mt-2 text-center text-sm text-ink-soft"></p>
+    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+      <a href="/admin/tours" class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+        <p class="font-display text-xl text-ink">Quản lý Tour</p>
+        <p class="mt-1 text-sm text-ink-soft">Thêm, sửa, xoá tour du lịch</p>
+      </a>
+      <a href="/admin/news" class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+        <p class="font-display text-xl text-ink">Quản lý Tin tức</p>
+        <p class="mt-1 text-sm text-ink-soft">Thêm, sửa, xoá bài tin tức</p>
+      </a>
+      <a href="/admin/pages" class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+        <p class="font-display text-xl text-ink">Quản lý Trang</p>
+        <p class="mt-1 text-sm text-ink-soft">Sửa trang chủ, giới thiệu, liên hệ + menu + header/footer</p>
+      </a>
+      <a href="/admin/testimonials" class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+        <p class="font-display text-xl text-ink">Ý kiến khách hàng</p>
+        <p class="mt-1 text-sm text-ink-soft">Thêm, sửa, xoá ảnh + cảm nhận khách hàng</p>
+      </a>
+      <a href="/admin/partners" class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+        <p class="font-display text-xl text-ink">Đối tác</p>
+        <p class="mt-1 text-sm text-ink-soft">Thêm, sửa, xoá đối tác</p>
+      </a>
+      <a href="/admin/bookings" class="rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+        <p class="font-display text-xl text-ink">Yêu cầu đặt tour</p>
+        <p class="mt-1 text-sm text-ink-soft">Danh sách khách đặt tour trên website</p>
+      </a>
+    </div>
+    <div id="booking-alert" class="mt-6 hidden rounded-2xl border border-sea/40 bg-sea-pale/50 p-4">
+      <p id="booking-alert-text" class="text-sm font-semibold text-sea-deep"></p>
+      <a href="/admin/bookings" class="mt-2 inline-block text-sm font-semibold text-sea underline underline-offset-2">Xem yêu cầu đặt tour</a>
+    </div>
+
+    <!-- Trạng thái cập nhật website: bảng mới sẽ được điền bằng JS (tự động làm mới). -->
+    <div id="deploy-panel" class="mt-8 hidden rounded-2xl border border-ink/10 bg-paper p-5 shadow-[var(--shadow-lift-1)]">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-display text-xl text-ink">Trạng thái cập nhật</h2>
+        <span id="deploy-meta" class="text-xs text-ink-soft">Đang kết nối…</span>
+      </div>
+      <p class="mt-1 text-sm text-ink-soft">Xem trạng thái bên dưới:</p>
+      <p id="deploy-empty" class="mt-4 hidden rounded-xl border border-dashed border-ink/15 p-4 text-center text-sm text-ink-soft">
+        Chưa có lần cập nhật nào.
+      </p>
+      <div id="deploy-list" class="mt-4 space-y-3"></div>
+    </div>
+    <div class="mt-10 text-center">
+      <button id="logout-btn" class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-sand">Đăng xuất</button>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  /* Khối trạng thái cập nhật website — ẩn khái niệm kỹ thuật, dùng màu + văn bản đơn giản. */
+  .dep-card {
+    border: 1px solid color-mix(in srgb, var(--color-ink, #3f3b35) 12%, transparent);
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--color-sand, #f7f0e3) 55%, white);
+    padding: 0.9rem 1rem;
+  }
+  .dep-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .dep-title {
+    font-weight: 600;
+    color: var(--color-ink, #3f3b35);
+    line-height: 1.35;
+  }
+  .dep-badge {
+    flex: none;
+    border-radius: 9999px;
+    padding: 0.15rem 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .dep-badge-running {
+    background: color-mix(in srgb, var(--color-sea, #1f6f78) 14%, transparent);
+    color: var(--color-sea-deep, #124e57);
+  }
+  .dep-badge-done {
+    background: color-mix(in srgb, #0f9d58 14%, transparent);
+    color: #0b6b3d;
+  }
+  .dep-badge-error {
+    background: color-mix(in srgb, #d64545 12%, transparent);
+    color: #a02525;
+  }
+  .dep-badge-idle {
+    background: color-mix(in srgb, var(--color-ink, #3f3b35) 10%, transparent);
+    color: var(--color-ink-soft, #6b655b);
+  }
+  .dep-progress {
+    margin-top: 0.65rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-ink, #3f3b35) 10%, transparent);
+    overflow: hidden;
+  }
+  .dep-progress-bar {
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--color-sea, #1f6f78);
+    transition: width 0.7s ease;
+  }
+  .dep-progress-bar.done {
+    background: #0f9d58;
+  }
+  .dep-progress-bar.error {
+    background: #d64545;
+  }
+  .dep-progress-bar.idle {
+    background: color-mix(in srgb, var(--color-ink, #3f3b35) 35%, transparent);
+  }
+  .dep-foot {
+    margin-top: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.1rem;
+    font-size: 0.78rem;
+    color: var(--color-ink-soft, #6b655b);
+  }
+  .dep-running .dep-progress-bar {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-sea, #1f6f78),
+      #37a9b5,
+      var(--color-sea, #1f6f78)
+    );
+    background-size: 200% 100%;
+    animation: dep-shimmer 1.6s linear infinite;
+  }
+  .dep-pulse {
+    animation: dep-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes dep-shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes dep-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+</style>
+
+<script>
+  import { api, setBusy } from '@/lib/admin.js';
+  const $ = (id) => document.getElementById(id);
+  const loginView = $('login-view');
+  const dashView = $('dash-view');
+  const loginError = $('login-error');
+  const loginBtn = $('login-form').querySelector('button[type="submit"]');
+  const logoutBtn = $('logout-btn');
+
+  async function refresh() {
+    const s = await api('GET', '/session');
+    if (s.status === 200) {
+      loginView.classList.add('hidden');
+      dashView.classList.remove('hidden');
+      $('dash-email').textContent = 'Đã đăng nhập thành công.';
+      await refreshBookingsAlert();
+      startDeployPolling();
+    } else {
+      stopDeployPolling();
+      loginView.classList.remove('hidden');
+      dashView.classList.add('hidden');
+    }
+  }
+
+  // Thông báo cho admin khi có khách đặt tour: đếm yêu cầu chưa xem.
+  async function refreshBookingsAlert() {
+    const alert = $('booking-alert');
+    try {
+      const r = await api('GET', '/bookings');
+      if (!r.data?.ok) return;
+      const unread = (r.data.bookings || []).filter((b) => b.status !== 'read').length;
+      if (unread > 0) {
+        $('booking-alert-text').textContent = `📩 Có ${unread} yêu cầu đặt tour mới từ khách hàng.`;
+        alert.classList.remove('hidden');
+      } else {
+        alert.classList.add('hidden');
+      }
+    } catch {
+      alert.classList.add('hidden');
+    }
+  }
+
+  // ===== Tình trạng cập nhật website (tự làm mới, không cần reload) =====
+  const RUNNING_PHASES = new Set(['queued', 'preparing', 'working', 'finishing']);
+  const BADGE_CLASS = {
+    done: 'dep-badge-done',
+    error: 'dep-badge-error',
+    cancelled: 'dep-badge-idle',
+    queued: 'dep-badge-idle',
+    preparing: 'dep-badge-running dep-pulse',
+    working: 'dep-badge-running dep-pulse',
+    finishing: 'dep-badge-running dep-pulse',
+  };
+  let depTimer = null; // poll dữ liệu từ hệ thống mỗi 5 giây
+  let depClock = null; // đồng hồ làm mới thời gian/ETA mỗi giây
+  let depByRun = new Map();
+
+  function depFmtDur(sec) {
+    if (!Number.isFinite(sec) || sec < 1) return 'vừa bắt đầu';
+    sec = Math.floor(sec);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m <= 0) return `${s} giây`;
+    if (s === 0) return `${m} phút`;
+    return `${m} phút ${s} giây`;
+  }
+
+  function depFmtEta(etaSec) {
+    if (etaSec == null || !Number.isFinite(etaSec)) return 'Đang ước tính thời gian hoàn tất';
+    if (etaSec < 30) return 'Chỉ còn vài giây nữa';
+    if (etaSec < 90) return 'Khoảng 1 phút nữa';
+    return `Còn khoảng ${Math.ceil(etaSec / 60)} phút nữa`;
+  }
+
+  function depCard(meta) {
+    const running = RUNNING_PHASES.has(meta.phase);
+    const now = Date.now();
+    let elapsedLabel = '';
+    let etaLabel = '';
+
+    if (running) {
+      const start = meta.startedAt ? Date.parse(meta.startedAt) : NaN;
+      if (!Number.isNaN(start)) {
+        const elapsedSec = (now - start) / 1000;
+        elapsedLabel = `Đã thực hiện ${depFmtDur(elapsedSec)}`;
+        const p = Math.max(meta.percent, 1);
+        etaLabel = depFmtEta((elapsedSec * (100 - meta.percent)) / p);
+      } else {
+        elapsedLabel = 'Đang chuẩn bị…';
+        etaLabel = 'Đang ước tính thời gian hoàn tất';
+      }
+    } else if (meta.phase === 'done') {
+      elapsedLabel = 'Vừa hoàn tất';
+    } else if (meta.phase === 'error') {
+      elapsedLabel = 'Chưa cập nhật được lần này';
+    }
+
+    const card = document.createElement('article');
+    card.className = `dep-card${running ? ' dep-running' : ''}`;
+    card.innerHTML = `
+      <div class="dep-head">
+        <p class="dep-title"></p>
+        <span class="dep-badge ${BADGE_CLASS[meta.phase] || 'dep-badge-idle'}"></span>
+      </div>
+      <div class="dep-progress"><div class="dep-progress-bar"></div></div>
+      <div class="dep-foot">
+        <span class="dep-elapsed"></span>
+        <span class="dep-eta"></span>
+      </div>`;
+
+    card.querySelector('.dep-title').textContent = meta.description;
+    card.querySelector('.dep-badge').textContent = meta.statusText;
+    const bar = card.querySelector('.dep-progress-bar');
+    bar.style.width = `${Math.max(2, Math.min(100, meta.percent))}%`;
+    if (meta.phase === 'error') bar.classList.add('error');
+    else if (meta.phase === 'done') bar.classList.add('done');
+    else if (meta.phase === 'queued' || meta.phase === 'cancelled') bar.classList.add('idle');
+    card.querySelector('.dep-elapsed').textContent = elapsedLabel;
+    card.querySelector('.dep-eta').textContent = etaLabel;
+    return card;
+  }
+
+  function renderDeployList() {
+    const listEl = $('deploy-list');
+    const emptyEl = $('deploy-empty');
+    if (!listEl || !emptyEl) return;
+    const items = [...depByRun.values()];
+    listEl.textContent = '';
+    if (!items.length) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+    for (const meta of items) listEl.appendChild(depCard(meta));
+  }
+
+  async function refreshDeployments() {
+    try {
+      const r = await api('GET', '/deployments');
+      if (!r.data?.ok) return;
+      const list = Array.isArray(r.data.deployments) ? r.data.deployments : [];
+      depByRun = new Map();
+      for (const d of list) {
+        depByRun.set(d.id, {
+          description: d.description || 'Cập nhật nội dung website',
+          phase: d.phase,
+          statusText: d.statusText || 'Đang xử lý',
+          percent: Number.isFinite(d.percent) ? d.percent : 0,
+          startedAt: d.startedAt || null,
+        });
+      }
+      renderDeployList();
+      $('deploy-meta').textContent = list.length ? 'Cập nhật mỗi vài giây' : 'Đã kết nối';
+    } catch {
+      // Lỗi mạng không kết nối được: giữ nguyên bảng đang hiển thị.
+    }
+  }
+
+  function startDeployPolling() {
+    if (depTimer) return; // tránh chạy hai lần
+    const panel = $('deploy-panel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    $('deploy-meta').textContent = 'Đang kết nối…';
+    refreshDeployments();
+    depTimer = setInterval(refreshDeployments, 5000);
+    depClock = setInterval(renderDeployList, 1000);
+  }
+
+  function stopDeployPolling() {
+    if (depTimer) {
+      clearInterval(depTimer);
+      depTimer = null;
+    }
+    if (depClock) {
+      clearInterval(depClock);
+      depClock = null;
+    }
+    depByRun = new Map();
+    const panel = $('deploy-panel');
+    if (panel) {
+      panel.classList.add('hidden');
+      $('deploy-list').textContent = '';
+      $('deploy-empty').classList.add('hidden');
+    }
+  }
+
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.classList.add('hidden');
+    setBusy(loginBtn, true, 'Đang đăng nhập...');
+    try {
+      const r = await api('POST', '/login', {
+        email: $('login-email').value.trim(),
+        password: $('login-pass').value,
+      });
+      if (r.status === 200) {
+        await refresh();
+      } else {
+        loginError.textContent =
+          r.data?.error === 'admin_online'
+            ? 'Đã có admin đang đăng nhập ở nơi khác.'
+            : 'Email hoặc mật khẩu không đúng.';
+        loginError.classList.remove('hidden');
+      }
+    } finally {
+      setBusy(loginBtn, false);
+    }
+  });
+
+  $('logout-btn').addEventListener('click', async () => {
+    setBusy(logoutBtn, true, 'Đang đăng xuất...');
+    try {
+      await api('POST', '/logout');
+      await refresh();
+    } finally {
+      setBusy(logoutBtn, false);
+    }
+  });
+
+  refresh();
+</script>

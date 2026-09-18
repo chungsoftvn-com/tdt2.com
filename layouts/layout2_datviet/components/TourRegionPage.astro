@@ -1,0 +1,86 @@
+---
+/**
+ * TourRegionPage — danh sách tour theo KHU VỰC.
+ * Dùng cho `pages/[lang]/tours/khu-vuc/[region].astro`, URL:
+ *   /vi/tours/khu-vuc/chau-a/, /en/tours/khu-vuc/chau-a/, /vi/tours/khu-vuc/mien-tay/…
+ *
+ * Slug khu vực lấy từ `region_name` của tour bản VI (nguồn duy nhất — xem
+ * `getTourRegions()` trong lib/content.js), nên KHÔNG có bảng cứng nào để lệch
+ * với content: thêm tour có `region_name` mới là tự có trang khu vực mới.
+ *
+ * Lưu ý: `region_name` mới chỉ có ở bản VI (bản EN dịch máy đang để rỗng), nên
+ * tên khu vực hiển thị ở cả 2 ngôn ngữ là tên tiếng Việt — giống cách slug tour
+ * dùng chung cho 2 ngôn ngữ.
+ */
+import { getContent, getTourRegions, getTours, href } from '@/lib/content.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+import SectionHeading from './SectionHeading.astro';
+import ToursGrid from './ToursGrid.astro';
+
+interface Props {
+  lang: string;
+  /** Slug khu vực, vd 'chau-a' (xem getTourRegions()). */
+  region: string;
+}
+
+const { lang, region } = Astro.props;
+const t = getContent(lang, 'tours');
+const c = getContent(lang, 'common');
+
+const regions = getTourRegions();
+const current = regions.find((r) => r.slug === region);
+if (!current) {
+  throw new Error(`[tour-region] unknown region "${region}"`);
+}
+
+const tours = getTours(lang).filter((x) => current.tourSlugs.includes(x.slug));
+const title = `${c.nav_tours} · ${current.name}`;
+---
+
+<BaseLayout lang={lang} title={title} description={t.list_text}>
+  <PageHero kicker={current.name} title={title} text={t.list_text} />
+
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+      <ToursGrid lang={lang} tours={tours} />
+    </div>
+  </section>
+
+  <!-- Các khu vực khác + về danh sách đầy đủ (internal link cho trang mới). -->
+  <section class="bg-sand-deep px-5 py-14">
+    <div class="mx-auto max-w-4xl">
+      <SectionHeading title={c.nav_tours} text={t.list_text} />
+
+      <nav class="mt-8 flex flex-wrap justify-center gap-2" aria-label={c.nav_tours}>
+        {
+          regions.map((r) => (
+            <a
+              href={href(lang, `tours/khu-vuc/${r.slug}`)}
+              aria-current={r.slug === region ? 'page' : undefined}
+              class={`inline-flex min-h-10 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                r.slug === region
+                  ? 'border-sea bg-sea text-white'
+                  : 'border-ink/15 bg-paper text-ink hover:border-sea hover:text-sea'
+              }`}
+            >
+              {r.name}
+              <span class="ml-1.5 rounded-full bg-ink/10 px-2 py-0.5 text-xs tabular-nums">
+                {r.tourSlugs.length}
+              </span>
+            </a>
+          ))
+        }
+      </nav>
+
+      <p class="mt-8 text-center">
+        <a
+          href={href(lang, 'tours')}
+          class="inline-flex min-h-12 items-center rounded-full bg-accent px-7 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]"
+        >
+          {c.cta_view_all}
+        </a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>

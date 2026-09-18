@@ -1,0 +1,202 @@
+---
+// /vi/dat-tour — Khách đặt tour: form đầy đủ như web cũ -> Worker -> Supabase.
+import { getContent, getTours } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'dat-tour');
+const tours = getTours(lang);
+const label = (k) => t[k] || k;
+---
+
+<BaseLayout lang={lang} title={t.title}>
+  <PageHero kicker={t.title} title={t.title} text={t.text} />
+
+  {t.body_html && (
+    <section class="px-5 pt-12">
+      <div class="rich-doc mx-auto max-w-3xl text-center" set:html={richDoc(t.body_html)} />
+    </section>
+  )}
+
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-4xl rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] sm:p-8">
+      <form id="booking-form" class="grid gap-4 sm:grid-cols-2">
+        <h2 class="font-display text-xl text-ink sm:col-span-2">{label('sec_tour')}</h2>
+
+        <div>
+          <label for="bk-tour" class="mb-1 block text-sm font-medium text-ink-soft">{label('tour_label')}</label>
+          <select id="bk-tour" name="tour_slug" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+            <option value="">{label('tour_placeholder')}</option>
+            {tours.map((x) => <option value={x.slug}>{x.name}</option>)}
+            <option value="custom">{label('tour_custom')}</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft">{label('loai_diem_den')}</label>
+          <div class="flex flex-wrap gap-3 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm">
+            <label class="flex items-center gap-1.5"><input type="radio" name="loai_diem_den" value="Tour trong nước" checked class="accent-sea" /> {label('kind_domestic')}</label>
+            <label class="flex items-center gap-1.5"><input type="radio" name="loai_diem_den" value="Tour nước ngoài" class="accent-sea" /> {label('kind_international')}</label>
+          </div>
+        </div>
+        <div>
+          <label for="bk-khuvuc" class="mb-1 block text-sm font-medium text-ink-soft">{label('khu_vuc')}</label>
+          <select id="bk-khuvuc" name="khu_vuc" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+            <option value="">{label('choose')}</option>
+            {['Miền Bắc', 'Miền Trung - Tây Nguyên', 'Miền Nam', 'Châu Á', 'Châu Âu', 'Châu Mỹ', 'Châu Úc', 'Châu Phi'].map((x) => <option value={x}>{x}</option>)}
+          </select>
+        </div>
+        <div>
+          <label for="bk-noikhoihanh" class="mb-1 block text-sm font-medium text-ink-soft">{label('noi_khoi_hanh')}</label>
+          <select id="bk-noikhoihanh" name="noi_khoi_hanh" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+            <option value="">{label('choose')}</option>
+            <option>Biên Hòa</option>
+            <option>TP. HCM</option>
+          </select>
+        </div>
+        <div>
+          <label for="bk-noiden" class="mb-1 block text-sm font-medium text-ink-soft">{label('noi_den')}</label>
+          <select id="bk-noiden" name="noi_den" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+            <option value="">{label('choose')}</option>
+            {['Hạ Long', 'Hà Nội', 'Lào Cai - Sapa', 'Nghệ An', 'Ninh Bình', 'Khác'].map((x) => <option value={x}>{x}</option>)}
+          </select>
+        </div>
+        <div data-noi-den-khac-wrap class="hidden">
+          <label for="bk-noidenkhac" class="mb-1 block text-sm font-medium text-ink-soft">{label('noi_den_khac')}</label>
+          <input id="bk-noidenkhac" name="noi_den_khac" type="text" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft">{label('loai_tour')}</label>
+          <div class="flex flex-wrap gap-3 rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm">
+            {['Tour phổ thông', 'Tour trung bình', 'Tour VIP'].map((x, i) => (
+              <label class="flex items-center gap-1.5"><input type="radio" name="loai_tour" value={x} checked={i === 0} class="accent-sea" /> {x}</label>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label for="bk-ngaydi" class="mb-1 block text-sm font-medium text-ink-soft">{label('ngay_khoi_hanh')}</label>
+          <input id="bk-ngaydi" name="ngay_khoi_hanh" type="date" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-ngayve" class="mb-1 block text-sm font-medium text-ink-soft">{label('ngay_ve')}</label>
+          <input id="bk-ngayve" name="ngay_ve" type="date" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-nguoilon" class="mb-1 block text-sm font-medium text-ink-soft">{label('nguoi_lon')}</label>
+          <input id="bk-nguoilon" name="nguoi_lon" type="number" min="0" value="1" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-treem" class="mb-1 block text-sm font-medium text-ink-soft">{label('tre_em')}</label>
+          <input id="bk-treem" name="tre_em" type="number" min="0" value="0" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-embe" class="mb-1 block text-sm font-medium text-ink-soft">{label('em_be')}</label>
+          <input id="bk-embe" name="em_be" type="number" min="0" value="0" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+
+        <h2 class="mt-2 font-display text-xl text-ink sm:col-span-2">{label('sec_contact')}</h2>
+        <div>
+          <label for="bk-name" class="mb-1 block text-sm font-medium text-ink-soft">{label('name')}</label>
+          <input id="bk-name" name="name" type="text" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-phone" class="mb-1 block text-sm font-medium text-ink-soft">{label('phone')}</label>
+          <input id="bk-phone" name="phone" type="tel" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-address" class="mb-1 block text-sm font-medium text-ink-soft">{label('dia_chi')}</label>
+          <input id="bk-address" name="dia_chi" type="text" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label for="bk-email" class="mb-1 block text-sm font-medium text-ink-soft">{label('email')}</label>
+          <input id="bk-email" name="email" type="email" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div class="sm:col-span-2">
+          <label for="bk-note" class="mb-1 block text-sm font-medium text-ink-soft">{label('yeu_cau_khac')}</label>
+          <textarea id="bk-note" name="yeu_cau_khac" rows="3" class="w-full resize-y rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea"></textarea>
+        </div>
+        <p id="booking-msg" class="hidden text-sm font-medium text-ink-soft sm:col-span-2"></p>
+        <div class="sm:col-span-2">
+          <button type="submit" class="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-sea px-7 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.02]">
+            {label('submit')}
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('booking-form');
+  const msg = document.getElementById('booking-msg');
+  const btn = form.querySelector('button[type="submit"]');
+  const noiDen = form.noi_den;
+  const noiDenKhacWrap = document.querySelector('[data-noi-den-khac-wrap]');
+  const ORIGIN = import.meta.env.DEV
+    ? 'http://localhost:8787'
+    : 'https://site-admin-worker.nvtuan1689.workers.dev';
+  const URL = `${ORIGIN}/todaytourist/api/bookings`;
+
+  noiDen?.addEventListener('change', () => {
+    noiDenKhacWrap?.classList.toggle('hidden', noiDen.value !== 'Khác');
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.classList.add('hidden');
+    const btnText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(URL, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.value.trim(),
+          phone: form.phone.value.trim(),
+          email: form.email.value.trim(),
+          dia_chi: form.dia_chi.value.trim(),
+          tour_slug: form.tour_slug.value,
+          tour_name: form.tour_slug.selectedOptions[0]?.text || '',
+          noi_khoi_hanh: form.noi_khoi_hanh.value,
+          loai_diem_den: form.loai_diem_den.value,
+          khu_vuc: form.khu_vuc.value,
+          noi_den: form.noi_den.value,
+          noi_den_khac: form.noi_den_khac.value.trim(),
+          loai_tour: form.loai_tour.value,
+          ngay_khoi_hanh: form.ngay_khoi_hanh.value,
+          ngay_ve: form.ngay_ve.value,
+          nguoi_lon: form.nguoi_lon.value,
+          tre_em: form.tre_em.value,
+          em_be: form.em_be.value,
+          yeu_cau_khac: form.yeu_cau_khac.value.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        msg.classList.remove('hidden');
+        msg.classList.remove('text-red-600');
+        msg.classList.add('text-sea-deep');
+        msg.textContent = form.dataset.success || 'Đã gửi yêu cầu. TodayTourist sẽ liên hệ lại sớm nhất.';
+        form.reset();
+      } else {
+        msg.classList.remove('hidden');
+        msg.classList.add('text-red-600');
+        msg.textContent = 'Gửi thất bại. Vui lòng thử lại hoặc gọi hotline.';
+      }
+    } catch (err) {
+      msg.classList.remove('hidden');
+      msg.classList.add('text-red-600');
+      msg.textContent = 'Không kết nối được. Vui lòng thử lại.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = btnText;
+    }
+  });
+</script>

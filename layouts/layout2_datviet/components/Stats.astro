@@ -1,0 +1,30 @@
+---
+import { getContent } from '@/lib/content.js';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'home');
+
+const stats = [
+  { value: t.stats_years, label: t.stats_years_label },
+  { value: t.stats_tours, label: t.stats_tours_label },
+  { value: t.stats_customers, label: t.stats_customers_label },
+  { value: t.stats_destinations, label: t.stats_destinations_label },
+];
+---
+
+<section class="border-b border-ink/5 bg-sand px-5 py-10">
+  <dl class="mx-auto grid max-w-6xl grid-cols-2 gap-6 text-center sm:grid-cols-4">
+    {
+      stats.map((s, i) => (
+        <div data-reveal style={`--reveal-delay:${i * 0.06}s`}>
+          <dt class="font-display text-3xl font-semibold text-sea sm:text-4xl">{s.value}</dt>
+          <dd class="mx-auto mt-1 max-w-[12rem] text-sm text-ink-soft">{s.label}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</section>

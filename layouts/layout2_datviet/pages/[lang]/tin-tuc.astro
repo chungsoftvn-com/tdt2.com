@@ -1,0 +1,13 @@
+---
+// /vi/tin-tuc, /en/tin-tuc — danh sách tin tức.
+import { LANGS } from '@/lib/content.js';
+import NewsPage from '@/components/NewsPage.astro';
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params;
+---
+
+<NewsPage lang={lang} />

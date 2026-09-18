@@ -1,0 +1,24 @@
+---
+import TourCard from './TourCard.astro';
+
+interface Props {
+  lang: string;
+  tours: {
+    slug: string;
+    name: string;
+    region: string;
+    regionName: string;
+    duration: string;
+    price: string;
+    image: string;
+    desc: string;
+    highlights: string[];
+  }[];
+}
+
+const { lang, tours } = Astro.props;
+---
+
+<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  {tours.map((tour) => <TourCard lang={lang} tour={tour} />)}
+</div>

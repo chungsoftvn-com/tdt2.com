@@ -1,0 +1,60 @@
+---
+// /vi/about, /vi/tours, /vi/contact ... and the same for /en.
+// Page slugs come from the shared PAGE_SLUGS registry in src/lib/content.js.
+import { LANGS, PAGE_SLUGS, getContent } from '@/lib/content.js';
+import { normalizeInternalLinks } from '@/lib/rich.js';
+import BaseLayout from '@/components/BaseLayout.astro';
+import AboutPage from '@/components/AboutPage.astro';
+import ToursPage from '@/components/ToursPage.astro';
+import ContactPage from '@/components/ContactPage.astro';
+import RichPage from '@/components/RichPage.astro';
+import TestimonialsPage from '@/components/TestimonialsPage.astro';
+import PartnersPage from '@/components/PartnersPage.astro';
+import BookTourPage from '@/components/BookTourPage.astro';
+import FindTourPage from '@/components/FindTourPage.astro';
+import RecruitPage from '@/components/RecruitPage.astro';
+import DirectionsPage from '@/components/DirectionsPage.astro';
+
+export function getStaticPaths() {
+  return LANGS.flatMap((lang) =>
+    PAGE_SLUGS.map((page) => ({ params: { lang, page } })),
+  );
+}
+
+const { lang, page } = Astro.params;
+// HTML override của admin (nội dung chính) — ưu tiên hơn HTML generate bởi Astro.
+// `?__sync=1` để lấy bản gốc (dùng cho nút "Đồng bộ lại nội dung").
+// Một số page (y-kien-khach-hang, doi-tac, dat-tour, tim-tour) không có file
+// content trùng tên — bỏ qua override cho những trang đó.
+let t = null;
+try {
+  t = getContent(lang, page);
+} catch {
+  t = null;
+}
+const isSync = Astro.url.searchParams.get('__sync') === '1';
+const override =
+  !isSync && t && typeof t.html_override === 'string' && t.html_override.trim()
+    ? t.html_override
+    : '';
+---
+
+{override ? (
+  <BaseLayout lang={lang}>
+    <div class="html-override" set:html={normalizeInternalLinks(override)} />
+  </BaseLayout>
+) : (
+  <>
+    {page === 'about' && <AboutPage lang={lang} />}
+    {page === 'tours' && <ToursPage lang={lang} />}
+    {page === 'contact' && <ContactPage lang={lang} />}
+    {page === 've-may-bay' && <RichPage lang={lang} page="ve-may-bay" />}
+    {page === 'cho-thue-xe' && <RichPage lang={lang} page="cho-thue-xe" />}
+    {page === 'y-kien-khach-hang' && <TestimonialsPage lang={lang} />}
+    {page === 'doi-tac' && <PartnersPage lang={lang} />}
+    {page === 'dat-tour' && <BookTourPage lang={lang} />}
+    {page === 'tim-tour' && <FindTourPage lang={lang} />}
+    {page === 'tuyen-dung' && <RecruitPage lang={lang} />}
+    {page === 'chi-duong' && <DirectionsPage lang={lang} />}
+  </>
+)}

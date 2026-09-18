@@ -1,0 +1,723 @@
+---
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+<AdminLayout>
+  <section id="list-view">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-3xl text-ink">Quản lý Trang</h1>
+    </div>
+    <p id="list-status" class="mt-4 text-sm text-ink-soft"></p>
+    <div id="page-list" class="mt-6 grid gap-3 sm:grid-cols-2"></div>
+  </section>
+
+  <section id="form-view" class="hidden">
+    <h1 id="form-title" class="font-display text-3xl text-ink">Sửa trang</h1>
+    <!-- KHÔNG dùng <form>: SunEditor tạo dialog form lồng nhau gây lỗi submit -->
+    <div id="page-form" class="mt-6 space-y-6 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <div id="form-fields" class="space-y-6"></div>
+      <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+      <div class="flex gap-3">
+        <button id="btn-save" type="button" class="rounded-full bg-sea px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep">Lưu</button>
+        <button id="btn-cancel" type="button" class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5">Huỷ</button>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { api, setBusy, fileToImage, describeSaveError } from '@/lib/admin.js';
+  import { PAGE_LIST, PAGE_SCHEMAS } from '@/lib/pageschema.js';
+  import { createRichEditor, createHtmlEditor, createFullEditor, collectFullHtmlImages } from '@/lib/sunblocks.js';
+  import { bodyFor } from '@/lib/pagebody.js';
+  import {
+    HOME_BLOCK_TYPES,
+    DEFAULT_HOME_BLOCKS,
+    customBodyKey,
+    HOME_BLOCK_FIELD_LABELS,
+  } from '@/lib/homeblocks.js';
+  const $ = (id) => document.getElementById(id);
+  const listView = $('list-view');
+  const formView = $('form-view');
+  const listStatus = $('list-status');
+  const formError = $('form-error');
+  const saveBtn = $('btn-save');
+  let current = null; // schema đang sửa
+  let data = null; // object nội dung trang
+  let editorMap = {}; // key -> SunEditor instance (field wysiwyg)
+  let galleryItems = []; // ảnh gallery (path/isNew/name/data/preview)
+  let htmlLastSynced = null; // nội dung generate sau khi đồng bộ; null nếu chưa đồng bộ
+  let homeBlocks = []; // [{id,type,enabled}] — danh sách khối trang chủ
+  let homeCustomEditors = {}; // id -> SunEditor instance (khối tự do)
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function renderList() {
+    $('page-list').innerHTML = PAGE_LIST.map((p) => {
+      const s = PAGE_SCHEMAS[p.key];
+      const desc =
+        s && s.mode === 'hotTours'
+          ? 'Chọn các tour hiện ở mục “Tour hot” trang chủ'
+          : 'Chỉnh sửa nội dung';
+      return `
+        <button data-page="${p.key}" type="button"
+          class="rounded-2xl bg-paper p-6 text-left shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]">
+          <p class="font-display text-xl text-ink">${esc(p.label)}</p>
+          <p class="mt-1 text-sm text-ink-soft">${esc(desc)}</p>
+        </button>`;
+    }).join('');
+    listStatus.textContent = `${PAGE_LIST.length} trang có thể chỉnh.`;
+    $('page-list').querySelectorAll('[data-page]').forEach((b) =>
+      b.addEventListener('click', () => editPage(b.dataset.page, b)),
+    );
+  }
+
+  async function editPage(key, btn) {
+    setBusy(btn, true, 'Đang mở...');
+    try {
+      const schema = PAGE_SCHEMAS[key];
+      if (!schema) return;
+      const r = await api('GET', `/pages/${schema.file}`);
+      if (!r.data?.ok) {
+        formError.textContent = 'Không tải được nội dung trang.';
+        formError.classList.remove('hidden');
+        return;
+      }
+      current = schema;
+      current.key = key;
+      data = r.data.page || {};
+      Object.values(editorMap).forEach((ed) => { try { ed.destroy(); } catch (e) {} });
+      editorMap = {};
+      htmlLastSynced = null;
+      if (schema.blockManager) {
+        await renderHomeBlocks();
+      } else if (schema.mode === 'hotTours' && !schema.sections) {
+        await renderHotTours();
+      } else {
+        await renderForm();
+      }
+      $('form-title').textContent = `Sửa — ${schema.label}`;
+      formError.classList.add('hidden');
+      listView.classList.add('hidden');
+      formView.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setBusy(btn, false);
+    }
+  }
+
+  /* ---- home: tickbox chọn tour hot (thêm vào cuối form) ---- */
+  async function renderHotToursSection() {
+    const wrap = $('form-fields');
+    const r = await api('GET', '/tours');
+    const tours = (r.data && r.data.tours) || [];
+    const selected = new Set(Array.isArray(data.hot_tours) ? data.hot_tours : []);
+    const sec = document.createElement('div');
+    sec.className = 'rounded-2xl border border-ink/10 bg-sand/40 p-4';
+    const h = document.createElement('h2');
+    h.className = 'mb-3 font-display text-lg font-semibold text-ink';
+    h.textContent = 'Tour hot — tick vào các tour muốn hiện ở mục “Tour hot” trang chủ';
+    sec.appendChild(h);
+    if (!tours.length) {
+      const p = document.createElement('p');
+      p.className = 'text-sm text-ink-soft';
+      p.textContent = 'Chưa có tour nào.';
+      sec.appendChild(p);
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'grid gap-2 sm:grid-cols-2';
+      for (const t of tours) {
+        const lab = document.createElement('label');
+        lab.className = 'flex cursor-pointer items-start gap-2 rounded-xl border border-ink/10 bg-sand px-3 py-2.5 text-sm text-ink hover:border-sea';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = t.slug;
+        cb.checked = selected.has(t.slug);
+        cb.className = 'hot-tour-cb mt-0.5 h-4 w-4 shrink-0 accent-sea';
+        const span = document.createElement('span');
+        span.textContent = t.title || t.slug;
+        lab.appendChild(cb);
+        lab.appendChild(span);
+        grid.appendChild(lab);
+      }
+      sec.appendChild(grid);
+    }
+    wrap.appendChild(sec);
+  }
+
+  /* ---- gallery ảnh công ty (chỉ trang about) ---- */
+  function renderGallerySection() {
+    const wrap = $('form-fields');
+    const sec = document.createElement('div');
+    sec.className = 'rounded-2xl border border-ink/10 bg-sand/40 p-4';
+    const h = document.createElement('h2');
+    h.className = 'mb-3 font-display text-lg font-semibold text-ink';
+    h.textContent = current.gallery.label;
+    sec.appendChild(h);
+    galleryItems = [];
+    for (const p of Array.isArray(data[current.gallery.key]) ? data[current.gallery.key] : []) {
+      galleryItems.push({ path: p, isNew: false });
+    }
+    const grid = document.createElement('div');
+    grid.id = 'gallery-grid';
+    grid.className = 'grid grid-cols-2 gap-3 sm:grid-cols-4';
+    sec.appendChild(grid);
+    const addBtn = document.createElement('label');
+    addBtn.className = 'mt-4 inline-flex cursor-pointer items-center gap-2 rounded-full bg-sea px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep';
+    addBtn.textContent = '＋ Thêm ảnh';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.multiple = true;
+    fileInput.className = 'hidden';
+    fileInput.addEventListener('change', () => onGalleryFiles(fileInput.files));
+    addBtn.appendChild(fileInput);
+    sec.appendChild(addBtn);
+    wrap.appendChild(sec);
+    renderGallery();
+  }
+
+  function renderGallery() {
+    const grid = $('gallery-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    galleryItems.forEach((item, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'relative overflow-hidden rounded-xl border border-ink/10 bg-sand';
+      const img = document.createElement('img');
+      img.src = item.isNew ? item.preview : item.path;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.className = 'h-32 w-full object-cover';
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'absolute right-1.5 top-1.5 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white hover:bg-red-600';
+      rm.textContent = 'Xóa';
+      rm.addEventListener('click', () => {
+        galleryItems.splice(i, 1);
+        renderGallery();
+      });
+      cell.appendChild(img);
+      cell.appendChild(rm);
+      grid.appendChild(cell);
+    });
+  }
+
+  async function onGalleryFiles(files) {
+    const list = files ? [...files] : [];
+    let added = 0;
+    formError.classList.add('hidden');
+    for (const file of list) {
+      let im;
+      try {
+        im = await fileToImage(file);
+      } catch (err) {
+        formError.textContent = err?.message || 'Lỗi xử lý ảnh.';
+        formError.classList.remove('hidden');
+        continue;
+      }
+      if (!im) continue;
+      const ext = (im.name.split('.').pop() || 'webp').toLowerCase();
+      const name = `about-gallery-${Date.now()}-${galleryItems.length}-${added}.${ext}`;
+      const preview = await new Promise((res) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.readAsDataURL(file);
+      });
+      galleryItems.push({ path: `/content/vi/images/${name}`, isNew: true, name, data: im.data, preview });
+      added++;
+    }
+    const input = document.querySelector('#form-fields input[type="file"]');
+    if (input) input.value = '';
+    renderGallery();
+  }
+
+  /* ---- HTML editor (nội dung chính) — about/contact/home ---- */
+  function renderHtmlEditorSection() {
+    const wrap = $('form-fields');
+    const sec = document.createElement('div');
+    sec.className = 'rounded-2xl border border-ink/10 bg-sand/40 p-4';
+    const h = document.createElement('h2');
+    h.className = 'mb-3 font-display text-lg font-semibold text-ink';
+    h.textContent = current.htmlEditor.label;
+    sec.appendChild(h);
+    const ed = document.createElement('div');
+    ed.id = 'ed-html';
+    sec.appendChild(ed);
+    const bar = document.createElement('div');
+    bar.className = 'mt-3 flex flex-wrap items-center gap-3';
+    const syncBtn = document.createElement('button');
+    syncBtn.type = 'button';
+    syncBtn.className = 'rounded-full border border-ink/15 px-5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5';
+    syncBtn.textContent = 'Đồng bộ lại nội dung';
+    syncBtn.addEventListener('click', () => syncHtmlEditor(syncBtn));
+    bar.appendChild(syncBtn);
+    const hint = document.createElement('p');
+    hint.className = 'text-xs text-ink-soft';
+    hint.textContent = 'Lưu HTML này sẽ ưu tiên hiển thị thay nội dung do hệ thống tạo. Ảnh nên dùng đường dẫn /content/vi/images/...';
+    bar.appendChild(hint);
+    sec.appendChild(bar);
+    wrap.appendChild(sec);
+    const edHtml = createHtmlEditor('ed-html', data[current.htmlEditor.key] || '');
+    if (edHtml) editorMap.html = edHtml;
+    // Chưa có override thì nạp HTML generate bởi Astro vào editor
+    if (!data[current.htmlEditor.key]) syncHtmlEditor(null, true);
+  }
+
+  async function syncHtmlEditor(btn, silent) {
+    if (!silent && !window.confirm('Hủy bỏ thay đổi HTML hiện tại và lấy lại nội dung do hệ thống tạo?')) return;
+    if (btn) setBusy(btn, true, 'Đang đồng bộ...');
+    try {
+      const url = current.htmlEditor.url;
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const text = await res.text();
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      const main = doc.querySelector('#main');
+      const html = main ? main.innerHTML : text;
+      const ed = editorMap.html;
+      if (ed) {
+        ed.setContents(html || '');
+        // ghi nhận nội dung generate — nếu admin lưu mà không sửa gì thì xóa override
+        htmlLastSynced = ed.getContents();
+      }
+    } catch (err) {
+      window.alert('Không lấy được nội dung HTML: ' + (err.message || err));
+    } finally {
+      if (btn) setBusy(btn, false);
+    }
+  }
+
+  /* ==================== Trang chủ: quản lý khối (block) ==================== */
+
+  /* Render toàn bộ form trang chủ: quản lý khối + nội dung từng khối + tour hot + html. */
+  async function renderHomeBlocks() {
+    const wrap = $('form-fields');
+    wrap.innerHTML = '';
+    editorMap = {};
+    homeCustomEditors = {};
+    homeBlocks = (Array.isArray(data.home_blocks) && data.home_blocks.length
+      ? data.home_blocks
+      : DEFAULT_HOME_BLOCKS
+    ).map((b) => ({ ...b }));
+
+    // --- 1) Quản lý khối: bật/tắt + xoá + sắp xếp + thêm ---
+    const mgr = document.createElement('div');
+    mgr.className = 'rounded-2xl border border-ink/10 bg-sand/40 p-4';
+    const mh = document.createElement('h2');
+    mh.className = 'mb-1 font-display text-lg font-semibold text-ink';
+    mh.textContent = 'Quản lý trang chủ';
+    mgr.appendChild(mh);
+    const hint = document.createElement('p');
+    hint.className = 'mb-3 text-xs text-ink-soft';
+    hint.textContent = 'Bỏ tick = ẩn khối khỏi trang. Xoá = bỏ hẳn. Thêm khối chuẩn hoặc khối tự do.';
+    mgr.appendChild(hint);
+    const list = document.createElement('div');
+    list.id = 'block-mgr-list';
+    list.className = 'space-y-2';
+    mgr.appendChild(list);
+    const addRow = document.createElement('div');
+    addRow.className = 'mt-3 flex flex-wrap items-center gap-2';
+    const addSel = document.createElement('select');
+    addSel.id = 'block-add-type';
+    addSel.className =
+      'min-w-0 flex-1 rounded-lg border border-ink/15 bg-sand px-2.5 py-2 text-sm text-ink outline-none focus:border-sea';
+    addSel.innerHTML = Object.entries(HOME_BLOCK_TYPES)
+      .map(([type, meta]) => `<option value="${type}">${esc(meta.label)}</option>`)
+      .join('');
+    const posSel = document.createElement('select');
+    posSel.id = 'block-add-pos';
+    posSel.className =
+      'min-w-0 flex-1 rounded-lg border border-ink/15 bg-sand px-2.5 py-2 text-sm text-ink outline-none focus:border-sea';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className =
+      'rounded-full bg-sea px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-sea-deep';
+    addBtn.textContent = '＋ Thêm khối';
+    addBtn.addEventListener('click', () => {
+      addBlock(addSel.value, posSel.value);
+    });
+    addRow.appendChild(addSel);
+    addRow.appendChild(posSel);
+    addRow.appendChild(addBtn);
+    mgr.appendChild(addRow);
+    wrap.appendChild(mgr);
+    renderBlockRows();
+    renderAddRow();
+
+    // --- 2) Nội dung từng khối ---
+    const content = document.createElement('div');
+    content.id = 'home-blocks-content';
+    content.className = 'space-y-6';
+    wrap.appendChild(content);
+    homeBlocks.forEach((b) => appendBlockContent(b));
+
+    // --- 3) Tour hot: tickbox chọn tour ---
+    if (current.hotTours) await renderHotToursSection();
+  }
+
+  /* Vẽ lại danh sách khối (bật/tắt + nút sắp xếp + xoá). */
+  function renderBlockRows() {
+    const list = $('block-mgr-list');
+    if (!list) return;
+    list.innerHTML = '';
+    homeBlocks.forEach((b, i) => {
+      const meta = HOME_BLOCK_TYPES[b.type] || { label: b.type };
+      const row = document.createElement('div');
+      row.className = 'flex flex-wrap items-center gap-2 rounded-xl border border-ink/10 bg-sand/60 px-3 py-2';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'h-4 w-4 shrink-0 accent-sea';
+      cb.checked = b.enabled !== false;
+      cb.dataset.blk = b.id;
+      cb.addEventListener('change', () => {
+        b.enabled = cb.checked;
+      });
+      const lbl = document.createElement('span');
+      lbl.className = 'min-w-0 flex-1 text-sm font-medium text-ink';
+      lbl.textContent = meta.label;
+      if (b.type === 'custom') lbl.textContent += ' (tự do)';
+      const up = document.createElement('button');
+      up.type = 'button';
+      up.className = 'rounded-lg border border-ink/15 px-2 py-1 text-xs font-semibold text-ink hover:bg-ink/5 disabled:opacity-30';
+      up.textContent = '▲';
+      up.disabled = i === 0;
+      up.addEventListener('click', () => moveBlock(i, -1));
+      const down = document.createElement('button');
+      down.type = 'button';
+      down.className = 'rounded-lg border border-ink/15 px-2 py-1 text-xs font-semibold text-ink hover:bg-ink/5 disabled:opacity-30';
+      down.textContent = '▼';
+      down.disabled = i === homeBlocks.length - 1;
+      down.addEventListener('click', () => moveBlock(i, 1));
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'rounded-lg bg-red-600/90 px-2 py-1 text-xs font-semibold text-white hover:bg-red-600';
+      del.textContent = 'Xóa';
+      del.addEventListener('click', () => removeBlock(b.id));
+      row.appendChild(cb);
+      row.appendChild(lbl);
+      row.appendChild(up);
+      row.appendChild(down);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function moveBlock(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= homeBlocks.length) return;
+    const tmp = homeBlocks[i];
+    homeBlocks[i] = homeBlocks[j];
+    homeBlocks[j] = tmp;
+    renderBlockRows();
+    // Đồng bộ thứ tự khối nội dung trong DOM
+    const content = $('home-blocks-content');
+    const a = content && content.querySelector(`[data-blk="${tmp.id}"]`);
+    const b = content && content.querySelector(`[data-blk="${homeBlocks[i].id}"]`);
+    if (content && a && b) content.insertBefore(a, dir < 0 ? b : b.nextSibling);
+  }
+
+  function removeBlock(id) {
+    homeBlocks = homeBlocks.filter((b) => b.id !== id);
+    const ed = homeCustomEditors[id];
+    if (ed) {
+      try { ed.destroy(); } catch (e) { /* ignore */ }
+      delete homeCustomEditors[id];
+    }
+    const sec = document.querySelector(`#home-blocks-content [data-blk="${id}"]`);
+    if (sec) sec.remove();
+    renderBlockRows();
+  }
+
+  /* Cập nhật danh sách vị trí chèn ("Chèn vào...") cho nút thêm khối. */
+  function renderAddRow() {
+    const posSel = $('block-add-pos');
+    if (!posSel) return;
+    const opts = [
+      '<option value="end">— Chèn vào: Cuối trang</option>',
+      '<option value="start">— Chèn vào: Đầu trang</option>',
+    ];
+    homeBlocks.forEach((b) => {
+      const meta = HOME_BLOCK_TYPES[b.type] || { label: b.type };
+      opts.push(`<option value="${b.id}">— Chèn sau: ${esc(meta.label)}</option>`);
+    });
+    posSel.innerHTML = opts.join('');
+  }
+
+  /* Thêm 1 khối (chuẩn hoặc tự do) vào vị trí đã chọn. */
+  function addBlock(type, pos) {
+    let block;
+    const existing = type !== 'custom' ? homeBlocks.find((b) => b.type === type) : undefined;
+    if (existing) {
+      existing.enabled = true;
+      block = existing;
+      homeBlocks = homeBlocks.filter((b) => b.id !== existing.id);
+    } else {
+      const id = type === 'custom' ? `custom-${Date.now().toString(36)}` : `blk-${type}`;
+      block = { id, type, enabled: true };
+      homeBlocks = homeBlocks.filter((b) => b.id !== id);
+    }
+    let index;
+    if (pos === 'start') {
+      index = 0; // chèn vào đầu trang
+    } else if (pos === 'end') {
+      index = homeBlocks.length; // chèn vào cuối trang
+    } else {
+      const at = homeBlocks.findIndex((b) => b.id === pos);
+      index = at < 0 ? homeBlocks.length : at + 1; // chèn SAU khối đã chọn
+    }
+    homeBlocks.splice(index, 0, block);
+    renderBlockRows();
+    renderAddRow();
+    insertBlockContent(block, index);
+  }
+
+  /* Dựng section nội dung của 1 khối (fields hoặc khung SunEditor). */
+  function buildBlockSection(b) {
+    const meta = HOME_BLOCK_TYPES[b.type] || { label: b.type };
+    const sec = document.createElement('div');
+    sec.className = 'rounded-2xl border border-ink/10 bg-sand/40 p-4';
+    sec.dataset.blk = b.id;
+    const h = document.createElement('h2');
+    h.className = 'mb-3 font-display text-lg font-semibold text-ink';
+    h.textContent = meta.label + (b.type === 'custom' ? ' (khối tự do)' : '');
+    sec.appendChild(h);
+
+    // Khối tự do: khung SunEditor (khởi tạo sau khi gắn vào DOM)
+    if (b.type === 'custom') {
+      const ed = document.createElement('div');
+      ed.id = 'ed-custom-' + b.id;
+      sec.appendChild(ed);
+      return sec;
+    }
+
+    // Khối chuẩn: các field nội dung
+    const fields = HOME_BLOCK_TYPES[b.type]?.fields || [];
+    if (fields.length) {
+      const grid = document.createElement('div');
+      grid.className = 'grid gap-2 sm:grid-cols-2';
+      for (const k of fields) {
+        const isLong = ['hero_text', 'about_teaser_text', 'services_text', 'hot_tours_text', 'values_text', 'cta_text'].includes(k);
+        const cell = document.createElement('div');
+        cell.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-ink/10 bg-sand/50 px-3 py-2';
+        if (isLong) cell.classList.add('sm:col-span-2');
+        const lab = document.createElement('label');
+        lab.className = 'w-44 shrink-0 text-sm font-medium text-ink-soft';
+        lab.textContent = HOME_BLOCK_FIELD_LABELS[k] || k;
+        lab.htmlFor = `f-${k}`;
+        cell.appendChild(lab);
+        const dash = document.createElement('span');
+        dash.className = 'text-ink/30';
+        dash.textContent = '–';
+        cell.appendChild(dash);
+        const inp = document.createElement(isLong ? 'textarea' : 'input');
+        inp.id = `f-${k}`;
+        inp.className = 'min-w-0 flex-1 rounded-lg border border-ink/15 bg-sand px-2.5 py-1.5 text-sm text-ink outline-none focus:border-sea';
+        if (isLong) {
+          inp.rows = 1;
+          inp.className += ' resize-y';
+        }
+        inp.value = data[k] ?? '';
+        cell.appendChild(inp);
+        grid.appendChild(cell);
+      }
+      sec.appendChild(grid);
+    }
+    return sec;
+  }
+
+  /* Gắn khối nội dung vào #home-blocks-content tại vị trí index (theo thứ tự homeBlocks). */
+  function insertBlockContent(b, index) {
+    const content = $('home-blocks-content');
+    if (!content) return;
+    const sec = buildBlockSection(b);
+    const ref = content.children[index];
+    if (ref) content.insertBefore(sec, ref);
+    else content.appendChild(sec);
+    if (b.type === 'custom') {
+      const sun = createFullEditor('ed-custom-' + b.id, data[customBodyKey(b.id)] || '', { height: '380px' });
+      if (sun) homeCustomEditors[b.id] = sun;
+    }
+  }
+
+  /* Thêm khối nội dung vào cuối (dùng khi khởi tạo form). */
+  function appendBlockContent(b) {
+    insertBlockContent(b, homeBlocks.indexOf(b));
+  }
+
+  async function renderForm() {
+    const wrap = $('form-fields');
+    wrap.innerHTML = '';
+    editorMap = {};
+    const bodyList = [];
+    let bIdx = 0;
+    for (const section of current.sections) {
+      const sec = document.createElement('div');
+      sec.className = 'rounded-2xl border border-ink/10 bg-sand/40 p-4';
+      const h = document.createElement('h2');
+      h.className = 'mb-3 font-display text-lg font-semibold text-ink';
+      h.textContent = section.title;
+      sec.appendChild(h);
+
+      // Mỗi block có một ô soạn thảo riêng
+      if (section.body) {
+        const bDef = section.body && typeof section.body === 'object' ? section.body : {};
+        const key = bDef.key || current.bodyKey || 'body_html';
+        const lab = document.createElement('label');
+        lab.className = 'mb-1 block text-sm font-medium text-ink-soft';
+        lab.textContent = bDef.label || current.bodyLabel || section.title || 'Nội dung';
+        sec.appendChild(lab);
+        const ed = document.createElement('div');
+        ed.id = 'ed-body-' + bIdx;
+        sec.appendChild(ed);
+        bodyList.push({ key, id: 'ed-body-' + bIdx });
+        bIdx++;
+      }
+
+      if (section.fields && section.fields.length) {
+        const grid = document.createElement('div');
+        grid.className = (section.body ? 'mt-6 ' : '') + 'grid gap-2 sm:grid-cols-2';
+        for (const f of section.fields) {
+          // Cặp [nhãn – nội dung] trên cùng 1 dòng
+          const cell = document.createElement('div');
+          cell.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-ink/10 bg-sand/50 px-3 py-2';
+          if (f.type === 'textarea') cell.classList.add('sm:col-span-2');
+          const lab = document.createElement('label');
+          lab.className = 'w-44 shrink-0 text-sm font-medium text-ink-soft';
+          lab.textContent = f.label;
+          lab.htmlFor = `f-${f.key}`;
+          cell.appendChild(lab);
+          const dash = document.createElement('span');
+          dash.className = 'text-ink/30';
+          dash.textContent = '–';
+          cell.appendChild(dash);
+          const cls = 'min-w-0 flex-1 rounded-lg border border-ink/15 bg-sand px-2.5 py-1.5 text-sm text-ink outline-none focus:border-sea';
+          if (f.type === 'textarea') {
+            const ta = document.createElement('textarea');
+            ta.id = `f-${f.key}`;
+            ta.rows = 1;
+            ta.className = cls + ' resize-y';
+            ta.value = data[f.key] ?? '';
+            cell.appendChild(ta);
+          } else {
+            const inp = document.createElement('input');
+            inp.id = `f-${f.key}`;
+            inp.className = cls;
+            inp.value = data[f.key] ?? '';
+            cell.appendChild(inp);
+          }
+          grid.appendChild(cell);
+        }
+        sec.appendChild(grid);
+      }
+      wrap.appendChild(sec);
+    }
+    // Tour hot: tickbox chọn tour (trang chủ)
+    if (current.hotTours) await renderHotToursSection();
+    // Gallery ảnh công ty (chỉ trang about)
+    if (current.gallery) renderGallerySection();
+    // HTML editor (nội dung chính) — about/contact/home
+    if (current.htmlEditor) renderHtmlEditorSection();
+    // khởi tạo SunEditor cho từng block
+    for (const b of bodyList) {
+      const ed = current.fullEditor
+        ? createFullEditor(b.id, bodyFor(current.key, data, b.key), { height: '420px' })
+        : createRichEditor(b.id, bodyFor(current.key, data, b.key), { height: '320px' });
+      if (ed) editorMap[b.key] = ed;
+    }
+  }
+
+  function collect() {
+    // Tour hot (trang chủ): tickbox (chỉ các ô tour hot, không tính checkbox ẩn/hiện block)
+    if (current.hotTours) {
+      data.hot_tours = [...document.querySelectorAll('#form-fields .hot-tour-cb:checked')].map((c) => c.value);
+    }
+    // Trang chủ: quản lý khối
+    if (current.blockManager) {
+      data.home_blocks = homeBlocks;
+      let newImgs = [];
+      for (const b of homeBlocks) {
+        if (b.type === 'custom') {
+          const ed = homeCustomEditors[b.id];
+          const val = ed ? ed.getContents() : '';
+          const r = collectFullHtmlImages(val);
+          data[customBodyKey(b.id)] = r.html;
+          if (r.images.length) newImgs.push(...r.images);
+          continue;
+        }
+        for (const k of HOME_BLOCK_TYPES[b.type]?.fields || []) {
+          const el = $(`f-${k}`);
+          if (el) data[k] = el.value.trim();
+        }
+      }
+      if (newImgs.length) data.images = newImgs;
+      else delete data.images;
+    }
+    // Từng block (mỗi block 1 editor)
+    for (const section of current.sections) {
+      if (!section.body) continue;
+      const bDef = section.body && typeof section.body === 'object' ? section.body : {};
+      const key = bDef.key || current.bodyKey;
+      if (!key) continue;
+      const ed = editorMap[key];
+      let val = ed ? ed.getContents() : '';
+      if (current.fullEditor) {
+        // Full-document: gom ảnh data: -> images[] + thay bằng path /content/vi/images/<name>
+        const r = collectFullHtmlImages(val);
+        val = r.html;
+        if (r.images.length) data.images = r.images;
+        else delete data.images;
+      }
+      data[key] = val;
+    }
+    if (current.gallery) {
+      data[current.gallery.key] = galleryItems.map((g) => g.path);
+      const newImgs = galleryItems.filter((g) => g.isNew).map((g) => ({ name: g.name, data: g.data }));
+      if (newImgs.length) data.images = newImgs;
+      else delete data.images;
+    }
+    if (current.htmlEditor) {
+      const ed = editorMap.html;
+      const val = ed ? ed.getContents() : '';
+      // Admin vừa đồng bộ mà không sửa gì → xóa override, dùng HTML generate bởi Astro
+      if (htmlLastSynced !== null && val === htmlLastSynced) {
+        delete data[current.htmlEditor.key];
+      } else {
+        data[current.htmlEditor.key] = val;
+      }
+    }
+    for (const section of current.sections) {
+      for (const f of section.fields || []) {
+        const el = $(`f-${f.key}`);
+        if (el) data[f.key] = el.value.trim();
+      }
+    }
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    formError.classList.add('hidden');
+    setBusy(saveBtn, true, 'Đang lưu...');
+    try {
+      collect();
+      const r = await api('PUT', `/pages/${current.file}`, data);
+      if (r.status === 200 && r.data?.ok) {
+        formView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        renderList();
+        listStatus.textContent = `Đã lưu "${current.label}". Nội dung sẽ lên trang sau khi build + deploy.`;
+      } else {
+        formError.textContent = describeSaveError(r);
+        formError.classList.remove('hidden');
+      }
+    } finally {
+      setBusy(saveBtn, false);
+    }
+  });
+
+  $('btn-cancel').addEventListener('click', () => {
+    formView.classList.add('hidden');
+    listView.classList.remove('hidden');
+  });
+
+  renderList();
+</script>

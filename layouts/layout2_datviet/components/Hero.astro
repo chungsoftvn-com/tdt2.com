@@ -1,0 +1,68 @@
+---
+import { getContent, href } from '@/lib/content.js';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'home');
+const c = getContent(lang, 'common');
+---
+
+<section class="relative overflow-hidden bg-sand-deep">
+  <!-- Decorative glows -->
+  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+    <div class="absolute -left-24 top-8 h-72 w-72 rounded-full bg-sea/10 blur-3xl" />
+    <div class="absolute -right-16 top-24 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+    <div class="absolute bottom-0 left-1/2 h-40 w-[32rem] -translate-x-1/2 rounded-full bg-sea-pale blur-3xl" />
+  </div>
+
+  <div class="relative mx-auto max-w-6xl px-5 py-20 text-center sm:py-28">
+    <p data-reveal class="inline-flex items-center gap-2 font-hand text-2xl text-accent-deep sm:text-3xl">
+      <Icon name="sparkles" class="h-6 w-6" />
+      {t.hero_kicker}
+    </p>
+    <h1
+      data-reveal
+      style="--reveal-delay:0.06s"
+      class="mx-auto mt-3 max-w-3xl font-display text-4xl leading-[1.08] text-ink sm:text-6xl"
+    >
+      {t.hero_title}
+    </h1>
+    <p
+      data-reveal
+      style="--reveal-delay:0.12s"
+      class="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft"
+    >
+      {t.hero_text}
+    </p>
+    <div
+      data-reveal
+      style="--reveal-delay:0.18s"
+      class="mt-9 flex flex-wrap items-center justify-center gap-3"
+    >
+      <a
+        href={href(lang, 'tours')}
+        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-sea px-7 py-3 text-sm font-semibold text-white shadow-[3px_3px_0_rgba(15,118,110,.3)] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]"
+      >
+        {t.hero_cta_primary}
+        <Icon name="arrow-right" class="h-4 w-4" />
+      </a>
+      <a
+        href={`tel:${c.hotline.replace(/[^0-9]/g, '')}`}
+        class="inline-flex min-h-12 items-center gap-2 rounded-full border border-ink/15 bg-paper px-7 py-3 text-sm font-semibold text-ink transition-colors hover:border-sea hover:text-sea-deep"
+      >
+        <Icon name="phone" class="h-4 w-4" />
+        {t.hero_cta_secondary}
+      </a>
+    </div>
+  </div>
+
+  <span class="wave-edge text-sand" aria-hidden="true">
+    <svg viewBox="0 0 1200 40" preserveAspectRatio="none">
+      <path d="M0 0H1200V20Q1100 0 1000 20T800 20T600 20T400 20T200 20T0 20Z" fill="currentColor" />
+    </svg>
+  </span>
+</section>

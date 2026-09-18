@@ -1,0 +1,22 @@
+---
+// URL CŨ của trang chi tiết tour: /vi/tour/:slug/ và /en/tour/:slug/.
+//
+// Từ 2026-09 trang thật nằm ở '/<lang>/tours/:slug/' (xem
+// `pages/[lang]/tours/[slug].astro`), nhưng URL cũ vẫn được build để những URL
+// đang được Google index không bị 404. Trang ở đây dùng ĐÚNG component của trang
+// thật nên phần thân HTML giống hệt; `resolveMovedPath()` trong lib/content.js
+// khiến canonical, hreflang, breadcrumb, og:url và JSON-LD đều trỏ về
+// '/<lang>/tours/:slug/' → Google chỉ index 1 URL duy nhất.
+import { LANGS, getTours } from '@/lib/content.js';
+import TourDetailPage from '@/components/TourDetailPage.astro';
+
+export function getStaticPaths() {
+  // Slugs are language-independent, so one set of paths covers both langs.
+  const slugs = getTours('vi').map((t) => t.slug);
+  return LANGS.flatMap((lang) => slugs.map((slug) => ({ params: { lang, slug } })));
+}
+
+const { lang, slug } = Astro.params;
+---
+
+<TourDetailPage lang={lang} slug={slug} />

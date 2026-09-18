@@ -1,0 +1,112 @@
+---
+import sanitizeHtml from 'sanitize-html';
+import { normalizeInternalLinks } from '@/lib/rich.js';
+/**
+ * RichContent — render mảng khối nội dung phong phú (ảnh + chữ đan xen).
+ * Block types: p (đoạn văn), h2/h3 (tiêu đề), img (ảnh), list (danh sách).
+ */
+interface Block {
+  type: string;
+  text?: string;
+  src?: string;
+  alt?: string;
+  items?: string[];
+}
+interface Props {
+  content?: Block[];
+}
+const { content = [] } = Astro.props;
+const blocks = Array.isArray(content) ? content : [];
+
+/** Render text an toàn (inline HTML allowlist) — hỗ trợ đậm/nghiêng/link trong đoạn. */
+const rich = (html) =>
+  normalizeInternalLinks(
+    sanitizeHtml(html || '', {
+      allowedTags: ['b', 'strong', 'i', 'em', 'u', 'a', 'br', 'span'],
+      allowedAttributes: { a: ['href', 'target', 'rel'] },
+      allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+      transformTags: {
+        a: sanitizeHtml.simpleTransform('a', { rel: 'noopener nofollow', target: '_blank' }),
+      },
+    }),
+  );
+---
+
+<div class="rich-content">
+  {
+    blocks.map((b) => {
+      if (!b) return null;
+      switch (b.type) {
+        case 'p':
+          return <p class="rich-p" set:html={rich(b.text)} />;
+        case 'h2':
+          return <h2 class="rich-h2" set:html={rich(b.text)} />;
+        case 'h3':
+          return <h3 class="rich-h3" set:html={rich(b.text)} />;
+        case 'img':
+          return (
+            <figure class="rich-figure">
+              <img src={b.src} alt={b.alt || ''} loading="lazy" decoding="async" />
+            </figure>
+          );
+        case 'list':
+          return (
+            <ul class="rich-ul">
+              {(b.items || []).map((it) => (
+                <li class="rich-li">{it}</li>
+              ))}
+            </ul>
+          );
+        default:
+          return null;
+      }
+    })
+  }
+</div>
+
+<style>
+  .rich-content {
+    color: var(--color-ink-soft);
+  }
+  .rich-h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    color: var(--color-ink);
+    margin: 1.75rem 0 0.75rem;
+  }
+  .rich-h3 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    line-height: 1.35;
+    color: var(--color-ink);
+    margin: 1.25rem 0 0.6rem;
+  }
+  .rich-p {
+    margin: 0.75rem 0;
+    line-height: 1.85;
+    white-space: pre-line;
+  }
+  .rich-figure {
+    margin: 1.25rem 0;
+  }
+  .rich-figure img {
+    width: 100%;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-lift-1);
+  }
+  .rich-ul {
+    margin: 0.75rem 0;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+  .rich-li {
+    margin: 0.3rem 0;
+    line-height: 1.7;
+  }
+  .rich-content a {
+    color: var(--color-sea);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

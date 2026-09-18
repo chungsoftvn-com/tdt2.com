@@ -1,0 +1,16 @@
+{
+  "_comment": "Cấu hình chung của website. `theme` = layout đang bật (thư mục trong layouts/). Admin đổi tại /vi/admin/ -> the 'Giao diện'. CI đọc file này trong site/scripts/copy-layout.mjs để build đúng layout.",
+  "theme": "layout2_datviet",
+  "themes": [
+    {
+      "id": "layout2_datviet",
+      "name": "DatViet (mặc định)",
+      "description": "Giao diện mới: mega menu, khối tìm tour 2 tab, tour hot giờ chót, logo khách hàng, footer 4 cột."
+    },
+    {
+      "id": "layout1_xugawear.vercel.app",
+      "name": "Xugawear (theme cũ)",
+      "description": "Giao diện cũ (sand/teal, tối giản)."
+    }
+  ]
+}

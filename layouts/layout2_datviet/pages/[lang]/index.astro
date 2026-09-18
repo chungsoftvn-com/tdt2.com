@@ -1,0 +1,27 @@
+---
+// /vi and /en — localized home pages.
+import { LANGS, getContent } from '@/lib/content.js';
+import { normalizeInternalLinks } from '@/lib/rich.js';
+import BaseLayout from '@/components/BaseLayout.astro';
+import Home from '@/components/Home.astro';
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params;
+const t = getContent(lang, 'home');
+const isSync = Astro.url.searchParams.get('__sync') === '1';
+const override =
+  !isSync && t && typeof t.html_override === 'string' && t.html_override.trim()
+    ? t.html_override
+    : '';
+---
+
+{override ? (
+  <BaseLayout lang={lang}>
+    <div class="html-override" set:html={normalizeInternalLinks(override)} />
+  </BaseLayout>
+) : (
+  <Home lang={lang} />
+)}

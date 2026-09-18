@@ -1,0 +1,235 @@
+---
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+<AdminLayout>
+  <section id="list-view">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-3xl text-ink">Ý kiến khách hàng</h1>
+      <button id="btn-new" type="button" class="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep">
+        + Thêm ý kiến
+      </button>
+    </div>
+    <p id="list-status" class="mt-4 text-sm text-ink-soft"></p>
+    <ul id="item-list" class="mt-6 space-y-3"></ul>
+  </section>
+
+  <section id="form-view" class="hidden">
+    <h1 id="form-title" class="font-display text-3xl text-ink">Thêm ý kiến khách hàng</h1>
+    <form id="item-form" class="mt-6 space-y-4 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-name">Tên khách hàng / đơn vị *</label>
+          <input id="f-name" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-org">Tổ chức / trường / công ty</label>
+          <input id="f-org" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-tour">Tour / chương trình</label>
+          <input id="f-tour" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-destination">Điểm đến</label>
+          <input id="f-destination" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-date">Ngày (tuỳ chọn)</label>
+          <input id="f-date" type="date" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="ed-feeling">Cảm nhận (soạn thảo đầy đủ — chữ đậm, ảnh, video...)</label>
+          <div id="ed-feeling"></div>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft">Ảnh khách hàng đi tour (nhiều ảnh)</label>
+          <div id="gallery-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+          <label class="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-sea px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep">
+            ＋ Thêm ảnh
+            <input id="f-images" type="file" accept="image/*" multiple class="hidden" />
+          </label>
+        </div>
+      </div>
+      <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+      <div class="flex gap-3">
+        <button type="submit" class="rounded-full bg-sea px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep">Lưu</button>
+        <button id="btn-cancel" type="button" class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5">Huỷ</button>
+      </div>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import { api, fileToImage, setBusy, describeSaveError } from '@/lib/admin.js';
+  import { createFullEditor, collectFullHtmlImages } from '@/lib/sunblocks.js';
+  const $ = (id) => document.getElementById(id);
+  const listView = $('list-view');
+  const formView = $('form-view');
+  const listStatus = $('list-status');
+  const formError = $('form-error');
+  let editingSlug = null;
+  let gallery = []; // { path, name?, data?, preview? }
+  const feelingEd = createFullEditor('ed-feeling', '', { height: '360px' });
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function load() {
+    const r = await api('GET', '/testimonials');
+    if (r.status === 401) {
+      listStatus.innerHTML = 'Chưa đăng nhập — <a href="/admin" class="underline">Đăng nhập tại đây</a>.';
+      return;
+    }
+    if (!r.data?.ok) { listStatus.textContent = 'Không tải được danh sách.'; return; }
+    const items = r.data.testimonials || [];
+    listStatus.textContent = `${items.length} ý kiến.`;
+    $('item-list').innerHTML = items
+      .map((x) => `
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper p-4 shadow-[var(--shadow-lift-1)]">
+          <div class="flex items-center gap-3">
+            ${Array.isArray(x.images) && x.images[0]
+              ? `<img src="${esc(x.images[0])}" alt="" class="h-12 w-16 rounded-lg object-cover" />`
+              : `<span class="flex h-12 w-16 items-center justify-center rounded-lg bg-sand text-xs text-ink-soft">Ảnh</span>`}
+            <div>
+              <p class="font-semibold text-ink">${esc(x.name)}</p>
+              <p class="text-xs text-ink-soft">${esc(x.slug)} · ${esc(x.destination)} · ${esc(x.date)}</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button data-edit="${esc(x.slug)}" class="rounded-full border border-ink/15 px-4 py-1.5 text-sm font-semibold text-ink hover:border-sea hover:text-sea-deep">Sửa</button>
+            <button data-del="${esc(x.slug)}" class="rounded-full border border-red-200 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">Xoá</button>
+          </div>
+        </li>`)
+      .join('');
+    $('item-list').querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => edit(b.dataset.edit, b)));
+    $('item-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => remove(b.dataset.del, b)));
+  }
+
+  function renderGallery() {
+    $('gallery-grid').innerHTML = gallery
+      .map((g, i) => `
+        <div class="relative overflow-hidden rounded-xl border border-ink/10 bg-sand">
+          <img src="${esc(g.preview || g.path)}" alt="" loading="lazy" class="h-32 w-full object-cover" />
+          <button type="button" data-rm="${i}" class="absolute right-1.5 top-1.5 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white hover:bg-red-600">Xóa</button>
+        </div>`)
+      .join('');
+    $('gallery-grid').querySelectorAll('[data-rm]').forEach((b) =>
+      b.addEventListener('click', () => {
+        gallery.splice(Number(b.dataset.rm), 1);
+        renderGallery();
+      }),
+    );
+  }
+
+  function showForm(x) {
+    editingSlug = x?.slug || null;
+    $('form-title').textContent = editingSlug ? 'Sửa ý kiến khách hàng' : 'Thêm ý kiến khách hàng';
+    $('f-name').value = x?.name || '';
+    $('f-org').value = x?.org || '';
+    $('f-tour').value = x?.tour || '';
+    $('f-destination').value = x?.destination || '';
+    $('f-date').value = x?.date || '';
+    if (feelingEd) feelingEd.setContents(x?.feeling || '');
+    gallery = (Array.isArray(x?.images) ? x.images : []).map((p) => ({ path: p }));
+    renderGallery();
+    $('f-images').value = '';
+    formError.classList.add('hidden');
+    listView.classList.add('hidden');
+    formView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function edit(slug, btn) {
+    setBusy(btn, true, 'Đang mở...');
+    try {
+      const r = await api('GET', `/testimonials/${slug}`);
+      if (r.data?.ok) showForm(r.data.testimonial);
+    } finally {
+      setBusy(btn, false);
+    }
+  }
+
+  async function remove(slug, btn) {
+    if (!confirm(`Xoá ý kiến "${slug}"?`)) return;
+    setBusy(btn, true, 'Đang xoá...');
+    try {
+      await api('DELETE', `/testimonials/${slug}`);
+    } finally {
+      setBusy(btn, false);
+    }
+    load();
+  }
+
+  $('btn-new').addEventListener('click', () => showForm(null));
+  $('btn-cancel').addEventListener('click', () => {
+    formView.classList.add('hidden');
+    listView.classList.remove('hidden');
+  });
+
+  $('f-images').addEventListener('change', async (e) => {
+    const files = [...e.target.files];
+    formError.classList.add('hidden');
+    for (const file of files) {
+      let im;
+      try {
+        im = await fileToImage(file);
+      } catch (err) {
+        formError.textContent = err?.message || 'Lỗi xử lý ảnh.';
+        formError.classList.remove('hidden');
+        continue;
+      }
+      if (!im) continue;
+      const ext = (im.name.split('.').pop() || 'webp').toLowerCase();
+      const name = `testimonial-${Date.now()}-${gallery.length}.${ext}`;
+      const preview = await new Promise((res) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.readAsDataURL(file);
+      });
+      gallery.push({ path: `/content/vi/images/${name}`, name, data: im.data, preview });
+    }
+    e.target.value = '';
+    renderGallery();
+  });
+
+  const saveBtn = $('item-form').querySelector('button[type="submit"]');
+  $('item-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.add('hidden');
+    setBusy(saveBtn, true, 'Đang lưu...');
+    try {
+      // Cảm nhận: lấy HTML từ SunEditor, đưa ảnh data: base64 vào danh sách upload.
+      const edHtml = feelingEd ? feelingEd.getContents() : '';
+      const { html: feelingHtml, images: edImages } = collectFullHtmlImages(edHtml);
+      const body = {
+        name: $('f-name').value.trim(),
+        org: $('f-org').value.trim(),
+        tour: $('f-tour').value.trim(),
+        destination: $('f-destination').value.trim(),
+        date: $('f-date').value,
+        feeling: feelingHtml,
+        images: gallery.map((g) => g.path),
+        uploads: [
+          ...gallery.filter((g) => g.data).map((g) => ({ name: g.name, data: g.data })),
+          ...edImages,
+        ],
+      };
+      const r = editingSlug
+        ? await api('PUT', `/testimonials/${editingSlug}`, body)
+        : await api('POST', '/testimonials', body);
+      if (r.status === 200 && r.data?.ok) {
+        formView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        load();
+      } else {
+        formError.textContent = describeSaveError(r);
+        formError.classList.remove('hidden');
+      }
+    } finally {
+      setBusy(saveBtn, false);
+    }
+  });
+
+  load();
+</script>

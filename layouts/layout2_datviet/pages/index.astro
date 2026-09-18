@@ -1,0 +1,22 @@
+---
+// Default landing page — Vietnamese home served at "/".
+import { DEFAULT_LANG, getContent } from '@/lib/content.js';
+import { normalizeInternalLinks } from '@/lib/rich.js';
+import BaseLayout from '@/components/BaseLayout.astro';
+import Home from '@/components/Home.astro';
+
+const t = getContent(DEFAULT_LANG, 'home');
+const isSync = Astro.url.searchParams.get('__sync') === '1';
+const override =
+  !isSync && t && typeof t.html_override === 'string' && t.html_override.trim()
+    ? t.html_override
+    : '';
+---
+
+{override ? (
+  <BaseLayout lang={DEFAULT_LANG}>
+    <div class="html-override" set:html={normalizeInternalLinks(override)} />
+  </BaseLayout>
+) : (
+  <Home lang={DEFAULT_LANG} />
+)}

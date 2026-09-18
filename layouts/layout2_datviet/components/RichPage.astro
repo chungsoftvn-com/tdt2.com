@@ -1,0 +1,31 @@
+---
+/**
+ * RichPage — trang tĩnh chung có nội dung phong phú (ảnh + chữ đan xen).
+ * Đọc content/<lang>/<page>.json với schema: title, hero_kicker, hero_title,
+ * hero_text, content[] (blocks RichContent). Dùng cho các trang dịch vụ
+ * như Vé máy bay, Cho thuê xe, ...
+ */
+import { getContent } from '@/lib/content.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+import RichContent from './RichContent.astro';
+
+interface Props {
+  lang: string;
+  page: string;
+}
+
+const { lang, page } = Astro.props;
+const t = getContent(lang, page);
+const content = Array.isArray(t.content) ? t.content : [];
+---
+
+<BaseLayout lang={lang} title={t.title}>
+  <PageHero kicker={t.hero_kicker} title={t.hero_title} text={t.hero_text} />
+
+  <section class="px-5 py-14 sm:py-16">
+    <div data-reveal class="mx-auto max-w-3xl">
+      <RichContent content={content} />
+    </div>
+  </section>
+</BaseLayout>

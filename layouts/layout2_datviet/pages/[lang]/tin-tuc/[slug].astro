@@ -1,0 +1,14 @@
+---
+// /vi/tin-tuc/:slug và /en/tin-tuc/:slug — chi tiết tin tức.
+import { LANGS, getNews } from '@/lib/content.js';
+import NewsDetailPage from '@/components/NewsDetailPage.astro';
+
+export function getStaticPaths() {
+  const slugs = getNews('vi').map((n) => n.slug);
+  return LANGS.flatMap((lang) => slugs.map((slug) => ({ params: { lang, slug } })));
+}
+
+const { lang, slug } = Astro.params;
+---
+
+<NewsDetailPage lang={lang} slug={slug} />

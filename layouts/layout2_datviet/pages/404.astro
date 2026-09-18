@@ -1,0 +1,21 @@
+---
+// Custom 404 page (Vietnamese, matching the default language).
+import { getContent, href } from '@/lib/content.js';
+import BaseLayout from '@/components/BaseLayout.astro';
+
+const t = getContent('vi', 'common');
+---
+
+<BaseLayout lang="vi" title={t['404_title']} noindex>
+  <section class="px-5 py-28 text-center sm:py-36">
+    <p class="font-display text-8xl font-semibold text-sea">404</p>
+    <h1 class="mt-3 font-display text-3xl text-ink">{t['404_title']}</h1>
+    <p class="mx-auto mt-3 max-w-md text-ink-soft">{t['404_text']}</p>
+    <a
+      href={href('vi')}
+      class="mt-7 inline-flex items-center gap-2 rounded-full bg-sea px-7 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]"
+    >
+      {t.cta_back_home}
+    </a>
+  </section>
+</BaseLayout>

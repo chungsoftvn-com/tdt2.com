@@ -1,0 +1,66 @@
+---
+import { getContent, href } from '@/lib/content.js';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: string;
+  item: {
+    slug: string;
+    title: string;
+    category?: string;
+    image?: string;
+    summary?: string;
+    published_at?: string;
+  };
+}
+
+const { lang, item } = Astro.props;
+const t = getContent(lang, 'common');
+const url = href(lang, `tin-tuc/${item.slug}`);
+---
+
+<article
+  data-reveal
+  class="group flex flex-col overflow-hidden rounded-2xl bg-paper shadow-[var(--shadow-lift-1)] transition-[transform,box-shadow] duration-300 ease-[var(--ease-soft)] hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift-2)]"
+>
+  <a href={url} class="relative block aspect-[16/9] overflow-hidden" tabindex="-1" aria-hidden="true">
+    {
+      item.image ? (
+        <img
+          src={item.image ? `/content/vi/images/${item.image}` : '/content/vi/images/placeholder-tour.svg'}
+          alt={item.title}
+          loading="lazy"
+          decoding="async"
+          width="900"
+          height="506"
+          class="h-full w-full object-cover transition-transform duration-500 ease-[var(--ease-soft)] group-hover:scale-[1.06]"
+        />
+      ) : (
+        <div class="h-full w-full bg-gradient-to-br from-sea via-sea-deep to-ink" />
+      )
+    }
+    {
+      item.category && (
+        <span class="absolute left-3 top-3 rounded-full bg-sand/90 px-3 py-1 text-xs font-semibold text-ink backdrop-blur-sm">
+          {item.category}
+        </span>
+      )
+    }
+  </a>
+
+  <div class="flex flex-1 flex-col p-5">
+    <p class="text-xs text-ink-soft">{item.published_at || ''}</p>
+    <h3 class="mt-1 font-display text-lg leading-snug text-ink">
+      <a href={url} class="hover:text-sea-deep">{item.title}</a>
+    </h3>
+    <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-soft">{item.summary}</p>
+
+    <a
+      href={url}
+      class="mt-4 inline-flex items-center justify-center gap-1.5 self-start rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-sea hover:bg-sea hover:text-white"
+    >
+      {t.read_more}
+      <Icon name="arrow-right" class="h-4 w-4" />
+    </a>
+  </div>
+</article>

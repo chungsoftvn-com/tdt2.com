@@ -1,0 +1,45 @@
+{
+  "_comment": "Dữ liệu lấy từ Facebook Page của công ty (https://www.facebook.com/profile.php?id=61563008528761). Cập nhật tay hoặc chạy lại dev/fb-download.mjs rồi sửa file này. Không chứa dữ liệu khách hàng.",
+  "page_name": "Du Lịch TodayTourist",
+  "page_url": "https://www.facebook.com/profile.php?id=61563008528761",
+  "followers": "2K",
+  "followers_label": "người theo dõi",
+  "category": "Travel Company",
+  "locality": "Biên Hòa",
+  "hours": "Luôn mở cửa",
+  "fb_address": "80 Đặng Nguyên, Khu Phố 29, Phường Long Bình",
+  "bio": "❌TODAY TOURIST ❌ Chuyên Tổ chức Tour Trong nước và Quốc tế - Thuê xe - Team Building - Sự kiện - Hội nghị",
+  "synced_at": "2026-09-18",
+  "section_title": "Hình ảnh mới nhất từ Facebook",
+  "section_text": "Cập nhật hình ảnh, video và hoạt động mới nhất của TodayTourist trên Facebook.",
+  "cta_label": "Theo dõi trên Facebook",
+  "cover": "facebook/fb-01.jpg",
+  "cover_alt": "Ảnh bìa Facebook Du Lịch TodayTourist",
+  "photos": [
+    {
+      "image": "facebook/fb-02.jpg",
+      "alt": "Tour du lịch TodayTourist - hình ảnh đăng trên Facebook",
+      "url": "https://www.facebook.com/profile.php?id=61563008528761"
+    },
+    {
+      "image": "facebook/fb-03.jpg",
+      "alt": "Chuyến đi của khách hàng TodayTourist",
+      "url": "https://www.facebook.com/profile.php?id=61563008528761"
+    },
+    {
+      "image": "facebook/fb-04.jpg",
+      "alt": "Teambuilding - gala do TodayTourist tổ chức",
+      "url": "https://www.facebook.com/profile.php?id=61563008528761"
+    },
+    {
+      "image": "facebook/fb-05.jpg",
+      "alt": "Đoàn khách TodayTourist tại điểm đến",
+      "url": "https://www.facebook.com/profile.php?id=61563008528761"
+    },
+    {
+      "image": "facebook/fb-06.jpg",
+      "alt": "Hoạt động du lịch TodayTourist",
+      "url": "https://www.facebook.com/profile.php?id=61563008528761"
+    }
+  ]
+}

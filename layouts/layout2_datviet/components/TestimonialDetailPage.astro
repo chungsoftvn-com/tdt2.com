@@ -1,0 +1,92 @@
+---
+// /vi/y-kien-khach-hang/:slug — chi tiết 1 ý kiến khách hàng.
+import { getContent, getTestimonial, href } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: string;
+  slug: string;
+}
+
+const { lang, slug } = Astro.props;
+const t = getContent(lang, 'testimonials');
+const c = getContent(lang, 'common');
+const x = getTestimonial(lang, slug);
+const listUrl = href(lang, 'y-kien-khach-hang');
+const backLabel = t.back_label || '← Quay lại danh sách';
+---
+
+<BaseLayout lang={lang} title={x ? x.name : t.list_title}>
+  {x ? (
+    <>
+      <PageHero kicker={t.list_title} title={x.name} text={[x.org, x.tour].filter(Boolean).join(' · ') || x.destination} />
+
+      <section class="px-5 py-12 sm:py-16">
+        <div class="mx-auto max-w-4xl">
+          <a
+            href={listUrl}
+            class="inline-flex items-center gap-2 text-sm font-semibold text-sea-deep transition-colors hover:text-ink"
+          >
+            ← {t.back_label || 'Quay lại danh sách'}
+          </a>
+
+          <article class="mt-6 overflow-hidden rounded-2xl bg-paper shadow-[var(--shadow-lift-1)]">
+            {(Array.isArray(x.images) && x.images.length > 0) && (
+              <div class="grid grid-cols-2 gap-1 bg-sand sm:grid-cols-3">
+                {x.images.slice(0, 6).map((img) => (
+                  <div class="aspect-[4/3] w-full overflow-hidden">
+                    <img src={img} alt={x.name} loading="lazy" decoding="async" class="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div class="p-6 sm:p-8">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sea text-sand">
+                  <Icon name="star" class="h-6 w-6" />
+                </span>
+                <div>
+                  <h1 class="font-display text-2xl text-ink">{x.name}</h1>
+                  {x.org && <p class="text-sm text-ink-soft">{x.org}</p>}
+                </div>
+                {(x.date || x.destination) && (
+                  <span class="ml-auto text-xs font-semibold text-ink-soft">
+                    {[x.destination, x.date].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+
+              {x.tour && (
+                <p class="mt-4 text-sm font-semibold text-sea">
+                  {x.tour}
+                </p>
+              )}
+
+              <div class="rich-doc mt-5 border-t border-ink/10 pt-5" set:html={richDoc(x.feeling)} />
+
+              <div class="mt-8 flex justify-center">
+                <a
+                  href={listUrl}
+                  class="inline-flex items-center gap-2 rounded-full border border-sea/40 px-6 py-2.5 text-sm font-semibold text-sea-deep transition-colors hover:bg-sea-pale"
+                >
+                  {t.back_label || 'Xem tất cả ý kiến khách hàng'}
+                </a>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </>
+  ) : (
+    <section class="px-5 py-20 text-center">
+      <p class="text-ink-soft">{c.not_found || 'Không tìm thấy ý kiến khách hàng này.'}</p>
+      <a href={listUrl} class="mt-4 inline-block text-sm font-semibold text-sea-deep underline">
+        {backLabel}
+      </a>
+    </section>
+  )}
+</BaseLayout>

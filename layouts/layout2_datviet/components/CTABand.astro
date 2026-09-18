@@ -1,0 +1,45 @@
+---
+import { getContent, href } from '@/lib/content.js';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'home');
+const c = getContent(lang, 'common');
+---
+
+<section class="px-5 py-16 sm:py-20">
+  <div
+    data-reveal
+    class="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-sea-deep px-6 py-14 text-center text-sand sm:px-12"
+  >
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-sea-pale/20 blur-3xl" />
+      <div class="absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-accent/20 blur-3xl" />
+    </div>
+    <div class="relative">
+      <p class="font-hand text-2xl text-accent-pale sm:text-3xl">{t.cta_kicker}</p>
+      <h2 class="mt-1 font-display text-3xl leading-tight text-white sm:text-4xl">{t.cta_title}</h2>
+      <p class="mx-auto mt-3 max-w-xl text-sand/80">{t.cta_text}</p>
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <a
+          href={href(lang, 'contact')}
+          class="inline-flex min-h-12 items-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-white shadow-[3px_3px_0_rgba(0,0,0,.2)] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]"
+        >
+          {t.cta_button}
+          <Icon name="arrow-right" class="h-4 w-4" />
+        </a>
+        <a
+          href={`tel:${c.hotline.replace(/[^0-9]/g, '')}`}
+          class="inline-flex min-h-12 items-center gap-2 rounded-full border border-sand/40 px-7 py-3 text-sm font-semibold text-sand transition-colors hover:bg-sand hover:text-ink"
+        >
+          <Icon name="phone" class="h-4 w-4" />
+          {c.cta_call} · {c.hotline}
+        </a>
+      </div>
+    </div>
+  </div>
+</section>

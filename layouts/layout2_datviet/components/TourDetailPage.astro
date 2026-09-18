@@ -1,0 +1,196 @@
+---
+import { getContent, getTour, getTours, href } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import { tourLd } from '@/lib/seo.js';
+import BaseLayout from './BaseLayout.astro';
+import SectionHeading from './SectionHeading.astro';
+import ToursGrid from './ToursGrid.astro';
+import Icon from './Icon.astro';
+import RichContent from './RichContent.astro';
+
+interface Props {
+  lang: string;
+  slug: string;
+}
+
+const { lang, slug } = Astro.props;
+const c = getContent(lang, 'common');
+const tour = getTour(lang, slug);
+if (!tour) {
+  throw new Error(`[tour] unknown slug "${slug}" for lang "${lang}"`);
+}
+const others = getTours(lang).filter((x) => x.slug !== slug).slice(0, 3);
+const phoneHref = `tel:${c.hotline.replace(/[^0-9]/g, '')}`;
+const zaloHref = `https://zalo.me/${c.zalo.replace(/[^0-9]/g, '')}`;
+const bookLink = href(lang, 'dat-tour');
+---
+
+<BaseLayout
+  lang={lang}
+  title={tour.name}
+  description={tour.desc}
+  image={tour.image}
+  type="product"
+  jsonLd={[tourLd(lang, tour)]}
+>
+  <!-- Tour hero -->
+  <section class="relative overflow-hidden bg-ink px-5 py-20 text-sand sm:py-28">
+    <div class="absolute inset-0" aria-hidden="true">
+      <img
+        src={tour.image ? `/content/vi/images/${tour.image}` : '/content/vi/images/placeholder-tour.svg'}
+        alt=""
+        class="h-full w-full object-cover opacity-40"
+        loading="eager"
+        decoding="async"
+      />
+      <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/40" />
+    </div>
+
+    <div class="relative mx-auto max-w-4xl text-center">
+      <p data-reveal class="inline-flex items-center gap-2 rounded-full bg-sand/15 px-3 py-1 text-sm font-medium backdrop-blur-sm">
+        <Icon name="map-pin" class="h-4 w-4 text-accent-pale" />
+        {tour.regionName}
+      </p>
+      <h1 data-reveal style="--reveal-delay:0.06s" class="mt-4 font-display text-3xl leading-tight text-white sm:text-5xl">
+        {tour.name}
+      </h1>
+      <div data-reveal style="--reveal-delay:0.12s" class="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sand/15 px-3 py-1.5 backdrop-blur-sm">
+          <Icon name="calendar" class="h-4 w-4 text-accent-pale" />
+          {c.duration}: {tour.duration}
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sand/15 px-3 py-1.5 backdrop-blur-sm">
+          <Icon name="tag" class="h-4 w-4 text-accent-pale" />
+          {c.price}: <strong class="text-accent-pale">{tour.price}</strong>
+        </span>
+      </div>
+      <div data-reveal style="--reveal-delay:0.18s" class="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <a
+          href={bookLink}
+          class="inline-flex min-h-12 items-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]"
+        >
+          {c.cta_book}
+          <Icon name="arrow-right" class="h-4 w-4" />
+        </a>
+        <a
+          href={phoneHref}
+          class="inline-flex min-h-12 items-center gap-2 rounded-full border border-sand/40 px-7 py-3 text-sm font-semibold text-sand transition-colors hover:bg-sand hover:text-ink"
+        >
+          <Icon name="phone" class="h-4 w-4" />
+          {c.cta_call}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Body -->
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto grid max-w-6xl gap-10 lg:grid-cols-3">
+      <div class="lg:col-span-2">
+        <div data-reveal class="overflow-hidden rounded-2xl shadow-[var(--shadow-lift-1)]">
+          <img
+            src={tour.image ? `/content/vi/images/${tour.image}` : '/content/vi/images/placeholder-tour.svg'}
+            alt={tour.name}
+            loading="lazy"
+            decoding="async"
+            width="900"
+            height="506"
+            class="aspect-[16/9] w-full object-cover"
+          />
+        </div>
+
+        <div data-reveal class="mt-8">
+          <p class="text-lg leading-relaxed text-ink-soft">{tour.desc}</p>
+        </div>
+
+        {
+          tour.highlights.length > 0 && (
+            <div data-reveal class="mt-10">
+              <h2 class="font-display text-2xl text-ink">{tour.name}</h2>
+              <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+                {
+                  tour.highlights.map((h) => (
+                    <li class="flex items-start gap-2.5 rounded-xl bg-paper p-4 shadow-[var(--shadow-lift-1)]">
+                      <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sea text-white">
+                        <Icon name="check" class="h-3.5 w-3.5" />
+                      </span>
+                      <span class="text-sm text-ink-soft">{h}</span>
+                    </li>
+                  ))
+                }
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          tour.content.length > 0 && (
+            <div data-reveal class="mt-10">
+              <RichContent content={tour.content} />
+            </div>
+          )
+        }
+      </div>
+
+      <!-- Contact card -->
+      <aside data-reveal style="--reveal-delay:0.1s" class="lg:sticky lg:top-24 lg:self-start">
+        <div class="rounded-2xl bg-sea-deep p-6 text-sand">
+          <h2 class="font-display text-xl text-white">{c.cta_contact}</h2>
+          <p class="mt-2 text-sm text-sand/80">{tour.name}</p>
+          <ul class="mt-5 space-y-3 text-sm">
+            <li class="flex items-start gap-2.5">
+              <Icon name="phone" class="mt-0.5 h-4 w-4 shrink-0 text-accent-pale" />
+              <span>
+                {c.hotline_label}:{' '}
+                <a href={phoneHref} class="font-semibold text-white hover:underline">
+                  {c.hotline}
+                </a>
+              </span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <Icon name="zalo" class="mt-0.5 h-4 w-4 shrink-0 text-accent-pale" />
+              <a href={zaloHref} target="_blank" rel="noopener noreferrer" class="hover:underline">
+                {c.zalo_label}: {c.zalo}
+              </a>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <Icon name="mail" class="mt-0.5 h-4 w-4 shrink-0 text-accent-pale" />
+              <a href={`mailto:${c.email}`} class="break-all hover:underline">
+                {c.email}
+              </a>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <Icon name="map-pin" class="mt-0.5 h-4 w-4 shrink-0 text-accent-pale" />
+              <span>{c.address}</span>
+            </li>
+          </ul>
+          <a
+            href={bookLink}
+            class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            {c.cta_book}
+            <Icon name="arrow-right" class="h-4 w-4" />
+          </a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Điều khoản & Lưu ý (hiển thị như web cũ) -->
+  <section class="px-5 pb-14 sm:pb-16">
+    <div class="mx-auto max-w-6xl rounded-2xl border border-ink/10 bg-paper p-6">
+      <h2 class="font-display text-2xl text-ink">{c.tour_terms_title}</h2>
+      <div class="mt-3 text-sm leading-relaxed text-ink-soft" set:html={richDoc(c.tour_terms_body)} />
+    </div>
+  </section>
+
+  <!-- Related tours -->
+  <section class="bg-sand-deep px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+      <SectionHeading title={c.cta_view_all} />
+      <div class="mt-8">
+        <ToursGrid lang={lang} tours={others} />
+      </div>
+    </div>
+  </section>
+</BaseLayout>

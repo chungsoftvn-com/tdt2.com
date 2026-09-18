@@ -1,0 +1,32 @@
+---
+import { getContent, getNews } from '@/lib/content.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+import NewsCard from './NewsCard.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'news');
+const news = getNews(lang);
+---
+
+<BaseLayout lang={lang} title={t.list_title}>
+  <PageHero kicker={t.list_title} title={t.list_title} text={t.list_text} />
+
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+      {
+        news.length > 0 ? (
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {news.map((n) => <NewsCard lang={lang} item={n} />)}
+          </div>
+        ) : (
+          <p class="py-20 text-center text-ink-soft">{t.list_empty}</p>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,193 @@
+---
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+<AdminLayout>
+  <section id="list-view">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-3xl text-ink">Đối tác</h1>
+      <button id="btn-new" type="button" class="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep">
+        + Thêm đối tác
+      </button>
+    </div>
+    <p id="list-status" class="mt-4 text-sm text-ink-soft"></p>
+    <ul id="item-list" class="mt-6 space-y-3"></ul>
+  </section>
+
+  <section id="form-view" class="hidden">
+    <h1 id="form-title" class="font-display text-3xl text-ink">Thêm đối tác</h1>
+    <form id="item-form" class="mt-6 space-y-4 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-name">Tên đối tác *</label>
+          <input id="f-name" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-website">Website</label>
+          <input id="f-website" type="url" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" placeholder="https://..." />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-image">Logo (tuỳ chọn)</label>
+          <input id="f-image" type="file" accept="image/*" class="w-full text-sm text-ink-soft file:mr-3 file:rounded-full file:border-0 file:bg-sea-pale file:px-4 file:py-2 file:text-sm file:font-semibold file:text-sea" />
+        </div>
+        <div class="flex items-end">
+          <img id="f-image-preview" alt="Logo" class="hidden h-16 w-auto rounded-lg bg-sand object-contain" />
+        </div>
+      </div>
+      <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+      <div class="flex gap-3">
+        <button type="submit" class="rounded-full bg-sea px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep">Lưu</button>
+        <button id="btn-cancel" type="button" class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5">Huỷ</button>
+      </div>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import { api, fileToImage, setBusy, describeSaveError } from '@/lib/admin.js';
+  const $ = (id) => document.getElementById(id);
+  const listView = $('list-view');
+  const formView = $('form-view');
+  const listStatus = $('list-status');
+  const formError = $('form-error');
+  let editingSlug = null;
+  let logo = null; // { name, data, preview }
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function load() {
+    const r = await api('GET', '/partners');
+    if (r.status === 401) {
+      listStatus.innerHTML = 'Chưa đăng nhập — <a href="/admin" class="underline">Đăng nhập tại đây</a>.';
+      return;
+    }
+    if (!r.data?.ok) { listStatus.textContent = 'Không tải được danh sách.'; return; }
+    const items = r.data.partners || [];
+    listStatus.textContent = `${items.length} đối tác.`;
+    $('item-list').innerHTML = items
+      .map((x) => `
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper p-4 shadow-[var(--shadow-lift-1)]">
+          <div class="flex items-center gap-3">
+            ${x.image
+              ? `<img src="${esc(x.image)}" alt="" class="h-12 w-16 rounded-lg bg-sand object-contain" />`
+              : `<span class="flex h-12 w-16 items-center justify-center rounded-lg bg-sand text-xs text-ink-soft">Logo</span>`}
+            <div>
+              <p class="font-semibold text-ink">${esc(x.name)}</p>
+              <p class="text-xs text-ink-soft">${esc(x.slug)}${x.website ? ' · ' + esc(x.website) : ''}</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button data-edit="${esc(x.slug)}" class="rounded-full border border-ink/15 px-4 py-1.5 text-sm font-semibold text-ink hover:border-sea hover:text-sea-deep">Sửa</button>
+            <button data-del="${esc(x.slug)}" class="rounded-full border border-red-200 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">Xoá</button>
+          </div>
+        </li>`)
+      .join('');
+    $('item-list').querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => edit(b.dataset.edit, b)));
+    $('item-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => remove(b.dataset.del, b)));
+  }
+
+  function showForm(x) {
+    editingSlug = x?.slug || null;
+    $('form-title').textContent = editingSlug ? 'Sửa đối tác' : 'Thêm đối tác';
+    $('f-name').value = x?.name || '';
+    $('f-website').value = x?.website || '';
+    logo = null;
+    const prev = $('f-image-preview');
+    if (x?.image) {
+      prev.src = x.image;
+      prev.classList.remove('hidden');
+    } else {
+      prev.classList.add('hidden');
+    }
+    $('f-image').value = '';
+    formError.classList.add('hidden');
+    listView.classList.add('hidden');
+    formView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function edit(slug, btn) {
+    setBusy(btn, true, 'Đang mở...');
+    try {
+      const r = await api('GET', `/partners/${slug}`);
+      if (r.data?.ok) showForm(r.data.partner);
+    } finally {
+      setBusy(btn, false);
+    }
+  }
+
+  async function remove(slug, btn) {
+    if (!confirm(`Xoá đối tác "${slug}"?`)) return;
+    setBusy(btn, true, 'Đang xoá...');
+    try {
+      await api('DELETE', `/partners/${slug}`);
+    } finally {
+      setBusy(btn, false);
+    }
+    load();
+  }
+
+  $('btn-new').addEventListener('click', () => showForm(null));
+  $('btn-cancel').addEventListener('click', () => {
+    formView.classList.add('hidden');
+    listView.classList.remove('hidden');
+  });
+
+  $('f-image').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    formError.classList.add('hidden');
+    let im;
+    try {
+      im = await fileToImage(file);
+    } catch (err) {
+      logo = null;
+      $('f-image-preview').classList.add('hidden');
+      formError.textContent = err?.message || 'Lỗi xử lý ảnh.';
+      formError.classList.remove('hidden');
+      return;
+    }
+    if (!im) return;
+    const ext = (im.name.split('.').pop() || 'webp').toLowerCase();
+    const name = `partner-${Date.now()}.${ext}`;
+    const preview = await new Promise((res) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.readAsDataURL(file);
+    });
+    logo = { name, data: im.data, preview };
+    const prev = $('f-image-preview');
+    prev.src = preview;
+    prev.classList.remove('hidden');
+  });
+
+  const saveBtn = $('item-form').querySelector('button[type="submit"]');
+  $('item-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.add('hidden');
+    setBusy(saveBtn, true, 'Đang lưu...');
+    try {
+      const body = {
+        name: $('f-name').value.trim(),
+        website: $('f-website').value.trim(),
+      };
+      if (logo) body.image = logo;
+      const r = editingSlug
+        ? await api('PUT', `/partners/${editingSlug}`, body)
+        : await api('POST', '/partners', body);
+      if (r.status === 200 && r.data?.ok) {
+        formView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        load();
+      } else {
+        formError.textContent = describeSaveError(r);
+        formError.classList.remove('hidden');
+      }
+    } finally {
+      setBusy(saveBtn, false);
+    }
+  });
+
+  load();
+</script>

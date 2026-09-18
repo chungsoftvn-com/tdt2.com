@@ -1,0 +1,169 @@
+---
+// Đối tác — slider logo tự chạy + nút prev/next (tham khảo web cũ: owl-carousel).
+// Tự cập nhật theo danh sách đối tác admin quản lý ở /admin/partners (content/…/partners.json).
+import { getContent, getPartners } from '@/lib/content.js';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const c = getContent(lang, 'common');
+const t = getContent(lang, 'home');
+const partners = getPartners(lang);
+const title = t.partners_title || c.nav_partners || 'Đối tác';
+const text = t.partners_text || '';
+const initial = (name = '') => (name.trim() || '?').charAt(0);
+---
+
+{
+  partners.length > 0 && (
+    <section class="border-t border-ink/5 bg-paper px-5 py-12 sm:py-16">
+      <div class="mx-auto max-w-6xl">
+        <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 class="font-display text-2xl text-ink sm:text-3xl">{title}</h2>
+            {text && <p class="mt-1 text-sm text-ink-soft">{text}</p>}
+          </div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              data-tt-partners-prev
+              aria-label="Trước"
+              title="Trước"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/15 bg-sand text-lg text-ink-soft transition-colors hover:border-sea hover:text-sea-deep"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              data-tt-partners-next
+              aria-label="Tiếp"
+              title="Tiếp"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/15 bg-sand text-lg text-ink-soft transition-colors hover:border-sea hover:text-sea-deep"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+
+        <div data-tt-partners-viewport class="tt-partners-viewport">
+          <div data-tt-partners-track class="tt-partners-track">
+            {
+              partners.map((p) => (
+                <a
+                  data-tt-partners-item
+                  href={p.website || undefined}
+                  target={p.website ? '_blank' : undefined}
+                  rel={p.website ? 'noopener noreferrer' : undefined}
+                  title={p.name}
+                  class="tt-partners-item flex flex-col items-center justify-center gap-2 rounded-2xl border border-ink/10 bg-white px-3 py-4 text-center transition hover:-translate-y-0.5 hover:border-sea/40 hover:shadow-[var(--shadow-lift-1)]"
+                >
+                  {p.image ? (
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      loading="lazy"
+                      decoding="async"
+                      class="tt-partners-logo max-h-11 w-auto object-contain"
+                    />
+                  ) : (
+                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-sea-pale text-sea">
+                      <span class="font-display text-lg font-semibold">{initial(p.name)}</span>
+                    </span>
+                  )}
+                  <span class="text-xs font-semibold leading-tight text-ink-soft">{p.name}</span>
+                </a>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<script>
+  // Slider logo đối tác — tự chạy 3s + nút prev/next (như web cũ).
+  // Lazy: query lại DOM mỗi lần (đề phòng chạy trước khi layout xong),
+  // event delegation cho nút bấm, tự animate bằng setTimeout (hoạt động cả khi
+  // tab nền — không phụ thuộc requestAnimationFrame).
+  function ttPartnersInit() {
+    const viewport = document.querySelector('[data-tt-partners-viewport]');
+    if (!viewport) return;
+    viewport.style.scrollBehavior = 'auto';
+    let raf = null;
+    let timer = null;
+
+    function stepWidth() {
+      const track = viewport.querySelector('[data-tt-partners-track]');
+      const items = Array.from(viewport.querySelectorAll('[data-tt-partners-item]'));
+      const it = items[0];
+      if (!it) return 0;
+      const gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap || '12') || 12;
+      return it.getBoundingClientRect().width + gap;
+    }
+
+    function animateTo(to) {
+      const max = viewport.scrollWidth - viewport.clientWidth;
+      to = Math.max(0, Math.min(to, max));
+      const from = viewport.scrollLeft;
+      const dist = to - from;
+      if (Math.abs(dist) < 1) return;
+      if (raf) { clearTimeout(raf); raf = null; }
+      const startT = performance.now();
+      const dur = 420;
+      function tick() {
+        const p = Math.min(1, (performance.now() - startT) / dur);
+        const e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        viewport.scrollLeft = from + dist * e;
+        if (p < 1) raf = setTimeout(tick, 16);
+        else raf = null;
+      }
+      raf = setTimeout(tick, 16);
+    }
+
+    function go(dir) {
+      const w = stepWidth();
+      if (!w) return;
+      animateTo(viewport.scrollLeft + dir * w);
+    }
+
+    function start() {
+      if (timer) return;
+      timer = setInterval(() => {
+        const w = stepWidth();
+        if (!w) return;
+        if (viewport.scrollLeft + viewport.clientWidth >= viewport.scrollWidth - w) {
+          animateTo(0); // về đầu khi đã cuộn gần hết
+        } else {
+          animateTo(viewport.scrollLeft + w);
+        }
+      }, 3000);
+    }
+    function stop() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    viewport.addEventListener('mouseenter', stop);
+    viewport.addEventListener('mouseleave', start);
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('[data-tt-partners-next]')) go(1);
+      else if (e.target.closest && e.target.closest('[data-tt-partners-prev]')) go(-1);
+    });
+
+    start();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ttPartnersInit);
+  } else {
+    ttPartnersInit();
+  }
+  // Chạy lại sau khi mọi tài nguyên (ảnh) tải xong — layout đã ổn định.
+  window.addEventListener('load', ttPartnersInit);
+</script>

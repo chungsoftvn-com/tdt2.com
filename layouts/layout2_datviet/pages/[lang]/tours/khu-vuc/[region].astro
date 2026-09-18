@@ -1,0 +1,18 @@
+---
+// /vi/tours/khu-vuc/:region/ và /en/tours/khu-vuc/:region/ — danh sách tour theo khu vực.
+//
+// Slug khu vực lấy từ `region_name` của tour bản VI (xem `getTourRegions()` trong
+// lib/content.js) nên dùng CHUNG cho cả 2 ngôn ngữ: 'chau-a', 'mien-tay',
+// 'bien-dao', 'mien-nam', 'mien-trung', 'nam-trung-bo'.
+import { LANGS, getTourRegions } from '@/lib/content.js';
+import TourRegionPage from '@/components/TourRegionPage.astro';
+
+export function getStaticPaths() {
+  const regions = getTourRegions().map((r) => r.slug);
+  return LANGS.flatMap((lang) => regions.map((region) => ({ params: { lang, region } })));
+}
+
+const { lang, region } = Astro.params;
+---
+
+<TourRegionPage lang={lang} region={region} />

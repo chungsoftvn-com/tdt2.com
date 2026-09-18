@@ -1,0 +1,48 @@
+---
+// /vi/chi-duong — Chỉ đường (địa chỉ + bản đồ; nội dung admin soạn 1 ô editor).
+import { getContent } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'chi-duong');
+---
+
+<BaseLayout lang={lang} title={t.title}>
+  <PageHero kicker={t.title} title={t.title} text={t.text} />
+  <section class="px-5 py-14 sm:py-16">
+    <div class="rich-doc mx-auto max-w-4xl" set:html={richDoc(t.body_html)} />
+  </section>
+</BaseLayout>
+
+<style>
+  .rich-doc {
+    color: var(--color-ink-soft);
+  }
+  .rich-doc h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-ink);
+    margin: 1.25rem 0 0.6rem;
+  }
+  .rich-doc p {
+    margin: 0.6rem 0;
+    line-height: 1.85;
+  }
+  .rich-doc iframe {
+    margin: 0.75rem 0;
+    width: 100%;
+    border-radius: 1rem;
+    border: 0;
+  }
+  .rich-doc a {
+    color: var(--color-sea);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

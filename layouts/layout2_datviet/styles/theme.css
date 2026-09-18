@@ -1,0 +1,533 @@
+/* ============================================================================
+   Theme "DatViet" — layout2_datviet
+   ----------------------------------------------------------------------------
+   File này được nạp SAU `global.css` (xem BaseLayout.astro) nên mọi token khai
+   báo lại trong @theme dưới đây sẽ GHI ĐÈ token gốc của layout1.
+
+   Ngôn ngữ thiết kế (tham khảo bố cục các web du lịch Việt Nam, không sao chép
+   nội dung/hình ảnh của bên nào):
+     - Xanh lá là màu thương hiệu (menu, tiêu đề mục, nút chính).
+     - Nền xám nhạt #f4f2f3 + thẻ trắng bo góc 10px, đổ bóng nhẹ.
+     - Nút bo 4px, nhãn bo 30px (pill), font Open Sans.
+     - Hồng #da0b65 cho CTA phụ, đỏ cam #ff3c00 cho giá / nhãn HOT.
+   ========================================================================== */
+
+/* LƯU Ý KỸ THUẬT: khai báo bằng `:root` thường, KHÔNG dùng `@theme`.
+   Tailwind v4 chỉ xử lý `@theme` trong file có `@import "tailwindcss"` (tức
+   global.css); ở file phụ này `@theme` sẽ bị trình duyệt bỏ qua hoàn toàn.
+   Các utility của Tailwind (bg-sea, text-ink, font-display…) đều biên dịch thành
+   `var(--color-*)` nên ghi đè biến ở đây là đủ để đổi toàn bộ giao diện. */
+:root {
+  /* --- Bảng màu --------------------------------------------------------- */
+  --color-sand: #f4f2f3;
+  --color-sand-deep: #e9e6e8;
+  --color-paper: #ffffff;
+
+  --color-ink: #333333;
+  --color-ink-soft: #6d6d6d;
+
+  /* Xanh lá thương hiệu */
+  --color-sea: #27822a;
+  --color-sea-deep: #1c6b1f;
+  --color-sea-pale: #eaf4ea;
+  --color-sea-soft: #6fae70;
+
+  /* CTA phụ (hồng) */
+  --color-accent: #da0b65;
+  --color-accent-deep: #a50849;
+  --color-accent-pale: #fde7f0;
+
+  /* Giá / nhãn HOT (đỏ cam) + vàng cho huy hiệu/giải thưởng */
+  --color-hot: #ff3c00;
+  --color-hot-deep: #d92f00;
+  --color-gold: #f2a900;
+
+  /* --- Chữ ------------------------------------------------------------- */
+  --font-display: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-body: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-hand: "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* --- Bo góc / đổ bóng ------------------------------------------------ */
+  --radius-card: 10px;
+  --radius-btn: 4px;
+  --radius-pill: 30px;
+
+  --shadow-lift-1: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 14px rgb(0 0 0 / 0.06);
+  --shadow-lift-2: 0 6px 16px rgb(0 0 0 / 0.1), 0 16px 40px rgb(0 0 0 / 0.12);
+}
+
+/* ============================== THANH TRÊN ============================== */
+.dv-topbar {
+  background: var(--color-sea-deep);
+  color: #fff;
+  font-size: 0.78rem;
+}
+.dv-topbar a {
+  color: #fff;
+  text-decoration: none;
+  opacity: 0.92;
+}
+.dv-topbar a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+.dv-topbar-sep {
+  opacity: 0.35;
+}
+
+/* ============================== HEADER ================================== */
+.dv-header {
+  background: #fff;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+}
+.dv-search-input {
+  border: 2px solid var(--color-sea);
+  border-right: 0;
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+  width: 100%;
+  outline: none;
+  background: #fff;
+}
+.dv-search-btn {
+  background: var(--color-sea);
+  color: #fff;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dv-search-btn:hover {
+  background: var(--color-sea-deep);
+}
+.dv-hotline-box {
+  border-left: 1px solid rgb(0 0 0 / 0.08);
+}
+.dv-hotline-box strong {
+  color: var(--color-hot);
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ============================== MENU ==================================== */
+.dv-nav {
+  background: var(--color-sea);
+}
+.dv-nav-item > a {
+  display: block;
+  padding: 0.85rem 0.9rem;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  line-height: 1;
+}
+.dv-nav-item {
+  position: relative;
+}
+.dv-nav-item:hover > a,
+.dv-nav-item[data-active='true'] > a {
+  background: var(--color-sea-deep);
+}
+.dv-mega {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 60;
+  display: none;
+  min-width: 15rem;
+  padding: 0.75rem 0;
+  background: #fff;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  box-shadow: var(--shadow-lift-2);
+}
+.dv-nav-item:hover .dv-mega,
+.dv-nav-item:focus-within .dv-mega {
+  display: block;
+}
+.dv-mega a {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+.dv-mega a:hover {
+  background: var(--color-sea-pale);
+  color: var(--color-sea-deep);
+}
+.dv-mega-count {
+  color: #9a9a9a;
+  font-size: 0.75rem;
+}
+
+/* ============================== TIÊU ĐỀ MỤC ============================= */
+.dv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+  border-bottom: 1px solid rgb(0 0 0 / 0.08);
+  padding-bottom: 0.6rem;
+}
+.dv-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-sea-deep);
+  letter-spacing: 0.01em;
+}
+.dv-head h2::before {
+  content: '';
+  width: 5px;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--color-sea);
+}
+.dv-head a {
+  font-size: 0.82rem;
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+}
+.dv-head a:hover {
+  color: var(--color-sea);
+  text-decoration: underline;
+}
+.dv-head-sub {
+  margin: -0.7rem 0 1rem;
+  font-size: 0.9rem;
+  color: var(--color-ink-soft);
+}
+
+/* ============================== NÚT / NHÃN ============================== */
+.dv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: var(--radius-btn);
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.dv-btn-green {
+  background: var(--color-sea);
+  color: #fff;
+}
+.dv-btn-green:hover {
+  background: var(--color-sea-deep);
+}
+.dv-btn-accent {
+  background: var(--color-accent);
+  color: #fff;
+}
+.dv-btn-accent:hover {
+  background: var(--color-accent-deep);
+}
+.dv-btn-outline {
+  border: 1px solid var(--color-sea);
+  color: var(--color-sea-deep);
+  background: #fff;
+}
+.dv-btn-outline:hover {
+  background: var(--color-sea);
+  color: #fff;
+}
+.dv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgb(0 0 0 / 0.12);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.dv-chip:hover {
+  border-color: var(--color-sea);
+  color: var(--color-sea-deep);
+  background: var(--color-sea-pale);
+}
+
+/* ============================== THẺ TOUR ================================ */
+.dv-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lift-1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.dv-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lift-2);
+}
+.dv-card-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+.dv-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.dv-card:hover .dv-card-media img {
+  transform: scale(1.06);
+}
+.dv-badge-region {
+  position: absolute;
+  left: 0.6rem;
+  top: 0.6rem;
+  background: rgb(39 130 42 / 0.92);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.dv-badge-hot {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.6rem;
+  background: var(--color-hot);
+  color: #fff;
+  border-radius: var(--radius-btn);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.dv-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.85rem 0.95rem 1rem;
+}
+.dv-card-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dv-card:hover .dv-card-title {
+  color: var(--color-sea-deep);
+}
+.dv-meta {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--color-ink-soft);
+}
+.dv-meta li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.dv-price-row {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-top: 1px dashed rgb(0 0 0 / 0.12);
+  padding-top: 0.6rem;
+}
+.dv-price-label {
+  font-size: 0.72rem;
+  color: #8c8c8c;
+  text-transform: uppercase;
+}
+.dv-price {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-hot);
+  white-space: nowrap;
+}
+.dv-price-old {
+  font-size: 0.8rem;
+  color: #9a9a9a;
+  text-decoration: line-through;
+}
+.dv-card-cta {
+  margin-top: 0.7rem;
+  display: block;
+  width: 100%;
+  border: 1px solid var(--color-sea);
+  border-radius: var(--radius-btn);
+  padding: 0.45rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-sea-deep);
+}
+.dv-card-cta:hover {
+  background: var(--color-sea);
+  color: #fff;
+}
+
+/* ============================== KHỐI KHÁC =============================== */
+.dv-panel {
+  background: #fff;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lift-1);
+  padding: 1rem;
+}
+.dv-tab {
+  flex: 1;
+  border-radius: var(--radius-btn) var(--radius-btn) 0 0;
+  padding: 0.6rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--color-sand-deep);
+  color: var(--color-ink-soft);
+}
+.dv-tab[data-active='true'] {
+  background: var(--color-sea);
+  color: #fff;
+}
+.dv-award {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  font-size: 0.86rem;
+  color: var(--color-ink-soft);
+  border-bottom: 1px dashed rgb(0 0 0 / 0.08);
+}
+.dv-award svg {
+  flex: none;
+  margin-top: 0.15rem;
+  color: var(--color-gold);
+}
+.dv-logo-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.dv-logo-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 4.75rem;
+  border: 1px solid rgb(0 0 0 / 0.08);
+  border-radius: var(--radius-card);
+  background: #fff;
+  padding: 0.5rem;
+}
+.dv-logo-cell img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  filter: grayscale(1);
+  transition: filter 0.25s ease;
+}
+.dv-logo-cell:hover img {
+  filter: none;
+}
+
+/* Nút nổi: chỉ đường + Zalo/Messenger */
+.dv-sticky-actions {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 1.25rem;
+  z-index: 70;
+  display: grid;
+  gap: 0.5rem;
+}
+.dv-sticky-actions a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: var(--shadow-lift-2);
+}
+.dv-sticky-actions a:hover {
+  transform: scale(1.06);
+}
+.dv-fab-maps {
+  background: var(--color-sea);
+}
+.dv-fab-chat {
+  background: var(--color-accent);
+}
+
+/* ============================== FOOTER ================================== */
+.dv-footer {
+  background: #efeced;
+  color: var(--color-ink);
+  font-size: 0.88rem;
+}
+.dv-footer h3 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-sea-deep);
+  margin-bottom: 0.6rem;
+}
+.dv-footer a:hover {
+  color: var(--color-sea);
+  text-decoration: underline;
+}
+.dv-footer-branch {
+  border-left: 2px solid var(--color-sea);
+  padding-left: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.dv-footer-branch strong {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--color-sea-deep);
+}
+.dv-newsletter input {
+  border: 1px solid rgb(0 0 0 / 0.15);
+  border-radius: var(--radius-btn) 0 0 var(--radius-btn);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  width: 100%;
+  background: #fff;
+}
+.dv-newsletter button {
+  background: var(--color-sea);
+  color: #fff;
+  border-radius: 0 var(--radius-btn) var(--radius-btn) 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dv-copyright {
+  background: var(--color-sea-deep);
+  color: rgb(255 255 255 / 0.85);
+  font-size: 0.8rem;
+}

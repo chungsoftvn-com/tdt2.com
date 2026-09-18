@@ -1,0 +1,19 @@
+---
+// /vi/tours/:slug/ và /en/tours/:slug/ — trang chi tiết tour.
+//
+// Trước 2026-09 đường dẫn là '/<lang>/tour/:slug/'; URL cũ đó vẫn được build ở
+// `pages/[lang]/tour/[slug].astro` (canonical trỏ về đây) nên không mất URL đã
+// được index. Danh sách tour theo khu vực: `[lang]/tours/khu-vuc/[region].astro`.
+import { LANGS, getTours } from '@/lib/content.js';
+import TourDetailPage from '@/components/TourDetailPage.astro';
+
+export function getStaticPaths() {
+  // Slugs are language-independent, so one set of paths covers both langs.
+  const slugs = getTours('vi').map((t) => t.slug);
+  return LANGS.flatMap((lang) => slugs.map((slug) => ({ params: { lang, slug } })));
+}
+
+const { lang, slug } = Astro.params;
+---
+
+<TourDetailPage lang={lang} slug={slug} />

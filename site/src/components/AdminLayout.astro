@@ -78,12 +78,20 @@ const features = [t.f1, t.f2, t.f3, t.f4, t.f5, t.f6];
             </span>
           </span>
         </div>
-        <a
-          href={href('vi')}
-          class="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-sand"
-        >
-          {t.back_home}
-        </a>
+        <div class="flex items-center gap-2">
+          <a
+            href="/admin/theme/"
+            class="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-sea hover:text-white"
+          >
+            Giao diện
+          </a>
+          <a
+            href={href('vi')}
+            class="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-sand"
+          >
+            {t.back_home}
+          </a>
+        </div>
       </div>
     </header>
 

@@ -1,0 +1,193 @@
+---
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+<AdminLayout>
+  <section id="list-view">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-3xl text-ink">Quản lý Tin tức</h1>
+      <button id="btn-new" type="button" class="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep">
+        + Thêm tin
+      </button>
+    </div>
+    <p id="list-status" class="mt-4 text-sm text-ink-soft"></p>
+    <ul id="news-list" class="mt-6 space-y-3"></ul>
+  </section>
+
+  <section id="form-view" class="hidden">
+    <h1 id="form-title" class="font-display text-3xl text-ink">Thêm tin</h1>
+    <form id="news-form" class="mt-6 space-y-4 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-title">Tiêu đề *</label>
+          <input id="f-title" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-slug">Slug (bỏ trống = tự sinh)</label>
+          <input id="f-slug" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-category">Danh mục</label>
+          <input id="f-category" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" placeholder="Tin du lịch" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-published">Ngày đăng</label>
+          <input id="f-published" type="date" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-image">Ảnh (tuỳ chọn)</label>
+          <input id="f-image" type="file" accept="image/*" class="w-full text-sm text-ink-soft file:mr-3 file:rounded-full file:border-0 file:bg-sea-pale file:px-4 file:py-2 file:text-sm file:font-semibold file:text-sea" />
+        </div>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-summary">Tóm tắt</label>
+        <textarea id="f-summary" rows="2" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea"></textarea>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-body">
+          Nội dung — gõ <code class="rounded bg-sand px-1">## Tiêu đề</code> cho mục, <code class="rounded bg-sand px-1">- nội dung</code> cho danh sách
+        </label>
+        <textarea id="f-body" rows="10" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea"></textarea>
+      </div>
+      <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+      <div class="flex gap-3">
+        <button type="submit" class="rounded-full bg-sea px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep">Lưu</button>
+        <button id="btn-cancel" type="button" class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5">Huỷ</button>
+      </div>
+    </form>
+    <div class="mt-4">
+      <label class="mb-1 block text-sm font-medium text-ink-soft">Nội dung phong phú — ảnh + chữ đan xen (WYSIWYG: bôi đen để bôi đậm/nghiêng, kéo thả ảnh)</label>
+      <div id="sun-editor" class="rounded-2xl border border-ink/10 bg-white"></div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { api, fileToImage, setBusy, describeSaveError } from '@/lib/admin.js';
+  import { initSunEditor, sunSetBlocks, sunCollectBlocks } from '@/lib/sunblocks.js';
+  const $ = (id) => document.getElementById(id);
+  const listView = $('list-view');
+  const formView = $('form-view');
+  const listStatus = $('list-status');
+  const formError = $('form-error');
+  let editingSlug = null;
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function load() {
+    const r = await api('GET', '/news');
+    if (r.status === 401) {
+      listStatus.innerHTML = 'Chưa đăng nhập — <a href="/admin" class="underline">Đăng nhập tại đây</a>.';
+      return;
+    }
+    if (!r.data?.ok) { listStatus.textContent = 'Không tải được danh sách.'; return; }
+    const news = r.data.news || [];
+    listStatus.textContent = `${news.length} bài tin.`;
+    $('news-list').innerHTML = news
+      .map((n) => `
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper p-4 shadow-[var(--shadow-lift-1)]">
+          <div>
+            <p class="font-semibold text-ink">${esc(n.title)}</p>
+            <p class="text-xs text-ink-soft">${esc(n.slug)} · ${esc(n.category)} · ${esc(n.published_at)}</p>
+          </div>
+          <div class="flex gap-2">
+            <button data-edit="${esc(n.slug)}" class="rounded-full border border-ink/15 px-4 py-1.5 text-sm font-semibold text-ink hover:border-sea hover:text-sea-deep">Sửa</button>
+            <button data-del="${esc(n.slug)}" class="rounded-full border border-red-200 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">Xoá</button>
+          </div>
+        </li>`)
+      .join('');
+    $('news-list').querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => edit(b.dataset.edit, b)));
+    $('news-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => remove(b.dataset.del, b)));
+  }
+
+  function showForm(n) {
+    editingSlug = n?.slug || null;
+    $('form-title').textContent = editingSlug ? 'Sửa tin' : 'Thêm tin';
+    $('f-title').value = n?.title || '';
+    $('f-slug').value = n?.slug || '';
+    $('f-category').value = n?.category || '';
+    $('f-published').value = n?.published_at || '';
+    $('f-summary').value = n?.summary || '';
+    $('f-body').value = n?.body || '';
+    sunSetBlocks(n?.content || []);
+    $('f-image').value = '';
+    formError.classList.add('hidden');
+    listView.classList.add('hidden');
+    formView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function edit(slug, btn) {
+    setBusy(btn, true, 'Đang mở...');
+    try {
+      const r = await api('GET', `/news/${slug}`);
+      if (r.data?.ok) showForm(r.data.news);
+    } finally {
+      setBusy(btn, false);
+    }
+  }
+
+  async function remove(slug, btn) {
+    if (!confirm(`Xoá tin "${slug}"?`)) return;
+    setBusy(btn, true, 'Đang xoá...');
+    try {
+      await api('DELETE', `/news/${slug}`);
+    } finally {
+      setBusy(btn, false);
+    }
+    load();
+  }
+
+  $('btn-new').addEventListener('click', () => showForm(null));
+  $('btn-cancel').addEventListener('click', () => {
+    formView.classList.add('hidden');
+    listView.classList.remove('hidden');
+  });
+
+  const saveBtn = $('news-form').querySelector('button[type="submit"]');
+  $('news-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.add('hidden');
+    setBusy(saveBtn, true, 'Đang lưu...');
+    try {
+      const body = {
+        title: $('f-title').value.trim(),
+        slug: $('f-slug').value.trim() || undefined,
+        category: $('f-category').value.trim(),
+        summary: $('f-summary').value.trim(),
+        body: $('f-body').value,
+        published_at: $('f-published').value || undefined,
+      };
+      const { content: rich, images } = await sunCollectBlocks();
+      body.content = rich;
+      if (images.length) body.images = images;
+      const file = $('f-image').files[0];
+      if (file) {
+        try {
+          body.image = await fileToImage(file);
+        } catch (err) {
+          formError.textContent = err?.message || 'Lỗi xử lý ảnh.';
+          formError.classList.remove('hidden');
+          return;
+        }
+      }
+      const r = editingSlug
+        ? await api('PUT', `/news/${editingSlug}`, body)
+        : await api('POST', '/news', body);
+      if (r.status === 200 && r.data?.ok) {
+        formView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        load();
+      } else {
+        formError.textContent = describeSaveError(r);
+        formError.classList.remove('hidden');
+      }
+    } finally {
+      setBusy(saveBtn, false);
+    }
+  });
+
+  initSunEditor('sun-editor');
+  load();
+</script>

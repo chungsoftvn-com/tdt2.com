@@ -1,0 +1,212 @@
+---
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+<AdminLayout>
+  <section id="list-view">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-3xl text-ink">Quản lý Tour</h1>
+      <button id="btn-new" type="button" class="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep">
+        + Thêm tour
+      </button>
+    </div>
+    <p id="list-status" class="mt-4 text-sm text-ink-soft"></p>
+    <ul id="tour-list" class="mt-6 space-y-3"></ul>
+  </section>
+
+  <section id="form-view" class="hidden">
+    <h1 id="form-title" class="font-display text-3xl text-ink">Thêm tour</h1>
+    <form id="tour-form" class="mt-6 space-y-4 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-name">Tên tour *</label>
+          <input id="f-name" required class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-slug">Slug (bỏ trống = tự sinh)</label>
+          <input id="f-slug" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-region">Vùng</label>
+          <select id="f-region" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea">
+            <option value="domestic">Trong nước</option>
+            <option value="international">Nước ngoài</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-region-name">Tên vùng</label>
+          <input id="f-region-name" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" placeholder="Miền Tây" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-departure">Nơi khởi hành</label>
+          <input id="f-departure" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" placeholder="Biên Hòa / TP.HCM" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-duration">Thời gian</label>
+          <input id="f-duration" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" placeholder="2 ngày 2 đêm" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-price">Giá</label>
+          <input id="f-price" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea" placeholder="2.990.000đ/khách" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-image">Ảnh (tuỳ chọn)</label>
+          <input id="f-image" type="file" accept="image/*" class="w-full text-sm text-ink-soft file:mr-3 file:rounded-full file:border-0 file:bg-sea-pale file:px-4 file:py-2 file:text-sm file:font-semibold file:text-sea" />
+        </div>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-desc">Mô tả</label>
+        <textarea id="f-desc" rows="2" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea"></textarea>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-ink-soft" for="f-highlights">Điểm nổi bật (mỗi dòng 1 mục)</label>
+        <textarea id="f-highlights" rows="4" class="w-full rounded-xl border border-ink/15 bg-sand px-3 py-2.5 text-sm text-ink outline-none focus:border-sea"></textarea>
+      </div>
+      <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+      <div class="flex gap-3">
+        <button type="submit" class="rounded-full bg-sea px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep">Lưu</button>
+        <button id="btn-cancel" type="button" class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5">Huỷ</button>
+      </div>
+    </form>
+    <div class="mt-4">
+      <label class="mb-1 block text-sm font-medium text-ink-soft">Nội dung phong phú — ảnh + chữ đan xen (WYSIWYG: bôi đen để bôi đậm/nghiêng, kéo thả ảnh)</label>
+      <div id="sun-editor" class="rounded-2xl border border-ink/10 bg-white"></div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { api, fileToImage, setBusy, describeSaveError } from '@/lib/admin.js';
+  import { initSunEditor, sunSetBlocks, sunCollectBlocks } from '@/lib/sunblocks.js';
+  const $ = (id) => document.getElementById(id);
+  const listView = $('list-view');
+  const formView = $('form-view');
+  const listStatus = $('list-status');
+  const formError = $('form-error');
+  let editingSlug = null;
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function load() {
+    const r = await api('GET', '/tours');
+    if (r.status === 401) {
+      listStatus.innerHTML = 'Chưa đăng nhập — <a href="/admin" class="underline">Đăng nhập tại đây</a>.';
+      return;
+    }
+    if (!r.data?.ok) { listStatus.textContent = 'Không tải được danh sách.'; return; }
+    const tours = r.data.tours || [];
+    listStatus.textContent = `${tours.length} tour.`;
+    $('tour-list').innerHTML = tours
+      .map((t) => `
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper p-4 shadow-[var(--shadow-lift-1)]">
+          <div>
+            <p class="font-semibold text-ink">${esc(t.name)}</p>
+            <p class="text-xs text-ink-soft">${esc(t.slug)} · ${esc(t.region_name)} · ${esc(t.price)}</p>
+          </div>
+          <div class="flex gap-2">
+            <button data-edit="${esc(t.slug)}" class="rounded-full border border-ink/15 px-4 py-1.5 text-sm font-semibold text-ink hover:border-sea hover:text-sea-deep">Sửa</button>
+            <button data-del="${esc(t.slug)}" class="rounded-full border border-red-200 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">Xoá</button>
+          </div>
+        </li>`)
+      .join('');
+    $('tour-list').querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => edit(b.dataset.edit, b)));
+    $('tour-list').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => remove(b.dataset.del, b)));
+  }
+
+  function showForm(t) {
+    editingSlug = t?.slug || null;
+    $('form-title').textContent = editingSlug ? 'Sửa tour' : 'Thêm tour';
+    $('f-name').value = t?.name || '';
+    $('f-slug').value = t?.slug || '';
+    $('f-region').value = t?.region || 'domestic';
+    $('f-region-name').value = t?.region_name || '';
+    $('f-departure').value = t?.departure || '';
+    $('f-duration').value = t?.duration || '';
+    $('f-price').value = t?.price || '';
+    $('f-desc').value = t?.desc || '';
+    $('f-highlights').value = (t?.highlights || []).join('\n');
+    sunSetBlocks(t?.content || []);
+    $('f-image').value = '';
+    formError.classList.add('hidden');
+    listView.classList.add('hidden');
+    formView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function edit(slug, btn) {
+    setBusy(btn, true, 'Đang mở...');
+    try {
+      const r = await api('GET', `/tours/${slug}`);
+      if (r.data?.ok) showForm(r.data.tour);
+    } finally {
+      setBusy(btn, false);
+    }
+  }
+
+  async function remove(slug, btn) {
+    if (!confirm(`Xoá tour "${slug}"?`)) return;
+    setBusy(btn, true, 'Đang xoá...');
+    try {
+      await api('DELETE', `/tours/${slug}`);
+    } finally {
+      setBusy(btn, false);
+    }
+    load();
+  }
+
+  $('btn-new').addEventListener('click', () => showForm(null));
+  $('btn-cancel').addEventListener('click', () => {
+    formView.classList.add('hidden');
+    listView.classList.remove('hidden');
+  });
+
+  const saveBtn = $('tour-form').querySelector('button[type="submit"]');
+  $('tour-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.add('hidden');
+    setBusy(saveBtn, true, 'Đang lưu...');
+    try {
+      const body = {
+        name: $('f-name').value.trim(),
+        slug: $('f-slug').value.trim() || undefined,
+        region: $('f-region').value,
+        region_name: $('f-region-name').value.trim(),
+        departure: $('f-departure').value.trim(),
+        duration: $('f-duration').value.trim(),
+        price: $('f-price').value.trim(),
+        desc: $('f-desc').value.trim(),
+        highlights: $('f-highlights').value.split('\n').map((s) => s.trim()).filter(Boolean),
+      };
+      const { content: rich, images } = await sunCollectBlocks();
+      body.content = rich;
+      if (images.length) body.images = images;
+      const file = $('f-image').files[0];
+      if (file) {
+        try {
+          body.image = await fileToImage(file);
+        } catch (err) {
+          formError.textContent = err?.message || 'Lỗi xử lý ảnh.';
+          formError.classList.remove('hidden');
+          return;
+        }
+      }
+      const r = editingSlug
+        ? await api('PUT', `/tours/${editingSlug}`, body)
+        : await api('POST', '/tours', body);
+      if (r.status === 200 && r.data?.ok) {
+        formView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        load();
+      } else {
+        formError.textContent = describeSaveError(r);
+        formError.classList.remove('hidden');
+      }
+    } finally {
+      setBusy(saveBtn, false);
+    }
+  });
+
+  initSunEditor('sun-editor');
+  load();
+</script>

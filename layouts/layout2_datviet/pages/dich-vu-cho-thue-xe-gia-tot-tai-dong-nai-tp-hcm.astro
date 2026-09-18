@@ -1,0 +1,23 @@
+---
+/**
+ * Trang VI-only ở CẤP GỐC — URL đầy đủ:
+ *   https://todaytourist.com/dich-vu-cho-thue-xe-gia-tot-tai-dong-nai-tp-hcm/
+ *
+ * Đây là BẢN SAO của /vi/cho-thue-xe/. Cả hai trang CÙNG đọc
+ * `content/vi/cho-thue-xe.json` nên nội dung luôn khớp nhau: sửa file JSON đó là
+ * cả hai trang đổi theo (không có bản JSON trùng để lệch nhau về sau).
+ *
+ * Khác biệt duy nhất so với /vi/cho-thue-xe/:
+ *   - URL không có tiền tố `/vi/` (theo yêu cầu SEO cho từ khoá dài).
+ *   - title/description riêng, khai báo ở `content/vi/seo.json` theo key = slug.
+ *
+ * BẮT BUỘC: slug này phải có trong `VI_ONLY_ROOT_PAGES` (src/lib/seo.js), nếu
+ * không trang sẽ phát hreflang `en` trỏ tới `/en/<slug>/` (URL 404, không tồn tại)
+ * và không được thêm vào sitemap.
+ */
+import RichPage from '@/components/RichPage.astro';
+
+const LANG = 'vi';
+---
+
+<RichPage lang={LANG} page="cho-thue-xe" />

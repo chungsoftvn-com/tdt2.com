@@ -1,0 +1,133 @@
+---
+/**
+ * /admin/theme — chọn GIAO DIỆN (theme) của website.
+ *
+ * Theme = 1 bộ pages + components trong `layouts/<id>/`. Vì trang là tĩnh (GitHub
+ * Pages) nên không thể đổi giao diện "ngay lập tức": trang này ghi `theme` vào
+ * `content/site.json` qua Worker, CI build lại đúng layout đó (~1–2 phút).
+ */
+import AdminLayout from '@/components/AdminLayout.astro';
+---
+
+<AdminLayout>
+  <section>
+    <h1 class="font-display text-3xl text-ink">Giao diện website</h1>
+    <p class="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
+      Chọn giao diện đang dùng cho toàn bộ website. Sau khi bấm Lưu, hệ thống sẽ tự
+      build lại trang (khoảng 1–2 phút); khi build xong, giao diện mới hiển thị cho
+      mọi khách truy cập.
+    </p>
+
+    <div class="mt-6 rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)]">
+      <p id="theme-status" class="text-sm text-ink-soft">Đang tải…</p>
+      <div id="theme-list" class="mt-4 grid gap-3"></div>
+      <p id="theme-error" class="mt-4 hidden text-sm font-medium text-red-600"></p>
+      <div class="mt-5 flex items-center gap-3">
+        <button
+          id="btn-save-theme"
+          type="button"
+          class="rounded-full bg-sea px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sea-deep"
+        >
+          Lưu giao diện
+        </button>
+        <a
+          href="/vi/"
+          target="_blank"
+          rel="noopener"
+          class="rounded-full border border-ink/15 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
+        >
+          Xem website
+        </a>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { api, describeSaveError } from '@/lib/admin.js';
+
+  interface ThemeOption {
+    id: string;
+    name: string;
+    description?: string;
+  }
+
+  const listEl = document.getElementById('theme-list');
+  const statusEl = document.getElementById('theme-status');
+  const errorEl = document.getElementById('theme-error');
+  const saveBtn = document.getElementById('btn-save-theme') as HTMLButtonElement | null;
+
+  let current = '';
+  let chosen = '';
+
+  function render(themes: ThemeOption[]) {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    for (const theme of themes) {
+      const label = document.createElement('label');
+      label.className =
+        'flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 p-4 transition-colors hover:bg-sand/60';
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'theme';
+      input.value = theme.id;
+      input.className = 'mt-1';
+      input.checked = theme.id === current;
+      input.addEventListener('change', () => {
+        chosen = theme.id;
+      });
+      const text = document.createElement('span');
+      text.innerHTML =
+        `<span class="block font-semibold text-ink">${theme.name}</span>` +
+        `<span class="block text-sm text-ink-soft">${theme.description || ''}</span>` +
+        `<code class="mt-1 block text-xs text-ink-soft">${theme.id}</code>`;
+      label.append(input, text);
+      listEl.appendChild(label);
+    }
+  }
+
+  function showError(message: string | null) {
+    if (!errorEl) return;
+    errorEl.textContent = message || '';
+    errorEl.classList.toggle('hidden', !message);
+  }
+
+  async function load() {
+    const r = await api('GET', '/theme');
+    if (!r.data || !r.data.ok) {
+      if (statusEl) statusEl.textContent = 'Không tải được cấu hình giao diện.';
+      showError(describeSaveError(r));
+      return;
+    }
+    current = r.data.theme || '';
+    chosen = current;
+    if (statusEl) {
+      statusEl.textContent = `Giao diện đang dùng: ${current}`;
+    }
+    render(r.data.themes || []);
+  }
+
+  saveBtn?.addEventListener('click', async () => {
+    showError(null);
+    if (!chosen || chosen === current) {
+      if (statusEl) statusEl.textContent = `Giao diện đang dùng: ${current} (chưa có thay đổi)`;
+      return;
+    }
+    saveBtn.disabled = true;
+    const prev = saveBtn.textContent;
+    saveBtn.textContent = 'Đang lưu…';
+    const r = await api('PUT', '/theme', { theme: chosen });
+    saveBtn.textContent = prev || 'Lưu giao diện';
+    saveBtn.disabled = false;
+    if (!r.data || !r.data.ok) {
+      showError(describeSaveError(r));
+      return;
+    }
+    current = r.data.theme || chosen;
+    if (statusEl) {
+      statusEl.textContent = `Đã lưu: ${current} — website sẽ tự build lại trong 1–2 phút.`;
+    }
+  });
+
+  load();
+</script>

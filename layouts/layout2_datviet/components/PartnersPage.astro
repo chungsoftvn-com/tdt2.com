@@ -1,0 +1,62 @@
+---
+// /vi/doi-tac — Đối tác của chúng tôi (logo + tên + website).
+import { getContent, getPartners } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import BaseLayout from './BaseLayout.astro';
+import PageHero from './PageHero.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'partners');
+const c = getContent(lang, 'common');
+const partners = getPartners(lang);
+---
+
+<BaseLayout lang={lang} title={t.list_title}>
+  <PageHero kicker={t.list_title} title={t.list_title} text={t.list_text} />
+
+  {t.body_html && (
+    <section class="px-5 pt-12">
+      <div class="rich-doc mx-auto max-w-3xl text-center" set:html={richDoc(t.body_html)} />
+    </section>
+  )}
+
+  <section class="px-5 py-14 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+      {partners.length === 0 ? (
+        <p class="text-center text-ink-soft">{c.empty_list}</p>
+      ) : (
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {partners.map((p, i) => (
+            <a
+              data-reveal
+              style={`--reveal-delay:${(i % 4) * 0.06}s`}
+              href={p.website || undefined}
+              target={p.website ? '_blank' : undefined}
+              rel={p.website ? 'noopener noreferrer' : undefined}
+              class="flex min-h-[7rem] flex-col items-center justify-center gap-3 rounded-2xl bg-paper px-4 py-6 text-center shadow-[var(--shadow-lift-1)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift-2)]"
+            >
+              {p.image ? (
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  loading="lazy"
+                  decoding="async"
+                  class="max-h-12 w-auto object-contain"
+                />
+              ) : (
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sea-pale text-sea">
+                  <span class="font-display text-lg font-semibold">{(p.name || '?').trim().charAt(0)}</span>
+                </span>
+              )}
+              <span class="text-sm font-semibold leading-snug text-ink">{p.name}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>

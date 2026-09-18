@@ -1,0 +1,218 @@
+---
+/**
+ * ContactPage — trang "Liên hệ": toàn bộ nội dung (ngoại trừ form) nằm trong MỘT
+ * block duy nhất (body_html) do admin soạn bằng SunEditor full-document.
+ * Form gửi yêu cầu vẫn là component riêng (nhãn lấy từ content form_*).
+ */
+import { getContent } from '@/lib/content.js';
+import { richDoc } from '@/lib/rich.js';
+import { bodyFor } from '@/lib/pagebody.js';
+import BaseLayout from './BaseLayout.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const t = getContent(lang, 'contact');
+const body = bodyFor('contact', t);
+---
+
+<BaseLayout lang={lang} title={t.title}>
+  <!-- Toàn bộ nội dung (một ô soạn thảo full-document, không gồm form).
+       KHÔNG data-reveal: tránh kẹt opacity:0 nếu block cao hơn viewport. -->
+  <section class="px-5 py-14 sm:py-16">
+    <div class="rich-doc mx-auto max-w-4xl" set:html={richDoc(body)} />
+  </section>
+
+  <!-- Form gửi yêu cầu (giữ nguyên, ngoại trừ khỏi editor) -->
+  <section class="bg-sand-deep px-5 py-14 sm:py-16">
+    <div data-reveal class="mx-auto max-w-2xl rounded-2xl bg-paper p-6 shadow-[var(--shadow-lift-1)] sm:p-8">
+      <h2 class="font-display text-2xl text-ink">{t.form_title}</h2>
+      <p class="mt-2 text-sm text-ink-soft">{t.form_note}</p>
+
+      <form data-contact-form class="mt-6 grid gap-4 sm:grid-cols-2">
+        <label class="block text-sm font-medium text-ink">
+          {t.form_name}
+          <input
+            type="text"
+            name="name"
+            required
+            class="mt-1.5 w-full rounded-xl border border-ink/15 bg-sand px-4 py-2.5 text-sm outline-none focus:border-sea"
+          />
+        </label>
+        <label class="block text-sm font-medium text-ink">
+          {t.form_phone}
+          <input
+            type="tel"
+            name="phone"
+            required
+            class="mt-1.5 w-full rounded-xl border border-ink/15 bg-sand px-4 py-2.5 text-sm outline-none focus:border-sea"
+          />
+        </label>
+        <label class="block text-sm font-medium text-ink sm:col-span-2">
+          {t.form_email}
+          <input
+            type="email"
+            name="email"
+            class="mt-1.5 w-full rounded-xl border border-ink/15 bg-sand px-4 py-2.5 text-sm outline-none focus:border-sea"
+          />
+        </label>
+        <label class="block text-sm font-medium text-ink sm:col-span-2">
+          {t.form_message}
+          <textarea
+            name="message"
+            rows="4"
+            class="mt-1.5 w-full rounded-xl border border-ink/15 bg-sand px-4 py-2.5 text-sm outline-none focus:border-sea"
+          ></textarea>
+        </label>
+
+        <p data-form-required class="hidden text-sm text-red-600 sm:col-span-2">
+          {t.form_required}
+        </p>
+        <p data-form-success class="hidden text-sm font-medium text-sea-deep sm:col-span-2">
+          {t.form_success}
+        </p>
+
+        <div class="sm:col-span-2">
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-full bg-sea px-7 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            {t.form_submit}
+            <Icon name="arrow-right" class="h-4 w-4" />
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script define:vars={{ t }}>
+  const form = document.querySelector('[data-contact-form]');
+  const required = document.querySelector('[data-form-required]');
+  const success = document.querySelector('[data-form-success]');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = form.name?.value?.trim();
+    const phone = form.phone?.value?.trim();
+    const email = form.email?.value?.trim();
+    const message = form.message?.value?.trim();
+    required?.classList.toggle('hidden', Boolean(name && phone));
+    if (!name || !phone) return;
+
+    // Mở app mail của khách, điền sẵn nội dung gửi về email nhận
+    const to = t.info_email || 'lesangtravel@gmail.com';
+    const subject = `[TodayTourist] ${t.form_title} - ${name}`;
+    const body = [
+      `${t.form_name}: ${name}`,
+      `${t.form_phone}: ${phone}`,
+      email ? `${t.form_email}: ${email}` : '',
+      message ? `${t.form_message}:\n${message}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    success?.classList.remove('hidden');
+    form.reset();
+    setTimeout(() => success?.classList.add('hidden'), 6000);
+  });
+</script>
+
+<style>
+  .rich-doc {
+    color: var(--color-ink-soft);
+  }
+  .rich-doc h1 {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    line-height: 1.25;
+    color: var(--color-ink);
+    margin: 0 0 1rem;
+  }
+  .rich-doc h2 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    line-height: 1.3;
+    color: var(--color-ink);
+    margin: 1.75rem 0 0.75rem;
+  }
+  .rich-doc h3 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    line-height: 1.35;
+    color: var(--color-ink);
+    margin: 1.25rem 0 0.6rem;
+  }
+  .rich-doc h4,
+  .rich-doc h5,
+  .rich-doc h6 {
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    margin: 1rem 0 0.5rem;
+  }
+  .rich-doc p {
+    margin: 0.75rem 0;
+    line-height: 1.85;
+  }
+  .rich-doc ul,
+  .rich-doc ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+  }
+  .rich-doc ul {
+    list-style: disc;
+  }
+  .rich-doc ol {
+    list-style: decimal;
+  }
+  .rich-doc li {
+    margin: 0.3rem 0;
+    line-height: 1.7;
+  }
+  .rich-doc a {
+    color: var(--color-sea);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .rich-doc img {
+    margin: 1rem 0;
+    border-radius: 1rem;
+    height: auto;
+    max-width: 100%;
+  }
+  .rich-doc blockquote {
+    margin: 1rem 0;
+    border-left: 3px solid var(--color-sea);
+    padding: 0.25rem 0 0.25rem 1rem;
+    font-style: italic;
+  }
+  .rich-doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  .rich-doc th,
+  .rich-doc td {
+    border: 1px solid var(--color-ink-soft);
+    padding: 0.5rem 0.75rem;
+  }
+  .rich-doc th {
+    background: var(--color-sand-deep);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .rich-doc hr {
+    margin: 1.5rem 0;
+    border: 0;
+    border-top: 1px solid var(--color-ink-soft);
+  }
+  .rich-doc pre {
+    background: var(--color-sand-deep);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    overflow-x: auto;
+  }
+</style>

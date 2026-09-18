@@ -4,14 +4,14 @@
  * - Dev:  Worker local (npm run dev trong worker/) tại localhost:8787
  * - Prod: Worker trên *.workers.dev (điền subdomain sau khi `wrangler deploy`)
  */
-export const ADMIN_SITE_ID = 'todaytourist';
+export const ADMIN_SITE_ID = 'tdt2';
 
 export const ADMIN_WORKER_ORIGIN = import.meta.env.DEV
   ? 'http://localhost:8787'
   : 'https://site-admin-worker.nvtuan1689.workers.dev'; // Worker DÙNG CHUNG cho mọi site
 
 /** Repo GitHub mà Worker commit nội dung bài viết (khớp github.owner/repo trong worker/sites.config.json). */
-export const ADMIN_GITHUB_REPO = 'chungsoftvn-com/tdt.com';
+export const ADMIN_GITHUB_REPO = 'chungsoftvn-com/tdt2.com';
 
 export function adminApi(path) {
   return `${ADMIN_WORKER_ORIGIN}/${ADMIN_SITE_ID}/api${path}`;
