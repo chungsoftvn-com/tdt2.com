@@ -7,7 +7,7 @@ import cloudflare from "@astrojs/cloudflare";
 // GitHub Pages CI (../.github/workflows/build.yml) uploads `.astro-dist`
 // sau khi copy `../content` + `../layouts` vào output.
 export default defineConfig({
-  site: 'https://todaytourist.com',
+  site: 'https://tdt2.com',
   outDir: './.astro-dist',
 
   // Mọi URL công khai đều kết thúc bằng '/'. Cùng với build.format='directory'

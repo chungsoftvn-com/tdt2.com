@@ -1,9 +1,9 @@
 {
-  "layout": "layout1_xugawear.vercel.app",
+  "layout": "layout2_datviet",
   "defaultLang": "vi",
   "site": {
     "name": "CÔNG TY DU LỊCH TODAYTOURIST",
-    "domain": "todaytourist.com"
+    "domain": "tdt2.com"
   },
   "admin": {
     "lang": "vi"

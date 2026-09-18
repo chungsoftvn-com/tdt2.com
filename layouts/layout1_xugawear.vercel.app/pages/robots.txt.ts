@@ -9,7 +9,7 @@ export const prerender = true;
 
 export const GET: APIRoute = () => {
   const body = [
-    '# robots.txt — todaytourist.com',
+    '# robots.txt — tdt2.com',
     '',
     'User-agent: *',
     'Allow: /',

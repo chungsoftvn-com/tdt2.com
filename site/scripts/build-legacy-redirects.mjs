@@ -36,7 +36,7 @@ const DIST = path.join(ROOT, '.astro-dist');
 const MAP_FILE = path.join(ROOT, 'legacy-redirects.json');
 
 /** Domain chính — phải khớp `site` trong astro.config.mjs + file CNAME + lib/seo.js. */
-const SITE_URL = 'https://todaytourist.com';
+const SITE_URL = 'https://tdt2.com';
 /** Số giây đếm ngược trước khi tự chuyển hướng. */
 const DELAY = 8;
 

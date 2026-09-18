@@ -26,7 +26,7 @@ import {
 export { DEFAULT_LANG, LANGS, viOnlyRootSlug };
 
 /** Domain chính — phải khớp `site` trong astro.config.mjs và file CNAME. */
-export const SITE_URL = 'https://todaytourist.com';
+export const SITE_URL = 'https://tdt2.com';
 
 const BRAND_FALLBACK = 'TODAYTOURIST';
 /** Ảnh chia sẻ mặc định (1200×630) — sinh bởi `site/scripts/make-brand-assets.py`. */

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Source project for todaytourist.com — Astro + TailwindCSS + JSON content + Argos Translate + GitHub CI. Builds the static site into ../dist.",
+  "description": "Source project for tdt2.com (fork of tdt.com) — Astro + TailwindCSS + JSON content + Argos Translate + GitHub CI. Builds the static site into ../dist.",
   "engines": {
     "node": ">=18.17.0"
   },
